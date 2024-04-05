@@ -1,0 +1,41 @@
+[gd_scene load_steps=6 format=3 uid="uid://b3m5n0tg2utbt"]
+
+[ext_resource type="Script" path="res://GDBlasTest.gd" id="2_d7iog"]
+[ext_resource type="Script" path="res://Node2D.gd" id="2_fucd7"]
+[ext_resource type="Texture2D" uid="uid://ber4nnl67tk7e" path="res://hand.png" id="3_vneqv"]
+[ext_resource type="Texture2D" uid="uid://dju3tcivl5ftc" path="res://eye.png" id="4_4ggk0"]
+
+[sub_resource type="Curve2D" id="Curve2D_ufmy0"]
+
+[node name="Main" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="GDBlasTest" type="Node" parent="."]
+script = ExtResource("2_d7iog")
+
+[node name="Node2D" type="Node2D" parent="."]
+script = ExtResource("2_fucd7")
+
+[node name="Path2D" type="Path2D" parent="Node2D"]
+unique_name_in_owner = true
+curve = SubResource("Curve2D_ufmy0")
+
+[node name="Sprite2D" type="Sprite2D" parent="Node2D"]
+unique_name_in_owner = true
+scale = Vector2(0.2, 0.2)
+texture = ExtResource("3_vneqv")
+
+[node name="Sprite2D2" type="Sprite2D" parent="Node2D"]
+position = Vector2(476, 100)
+scale = Vector2(0.25, 0.25)
+texture = ExtResource("4_4ggk0")
+
+[node name="Sprite2D3" type="Sprite2D" parent="Node2D"]
+position = Vector2(608, 100)
+scale = Vector2(0.25, 0.25)
+texture = ExtResource("4_4ggk0")
