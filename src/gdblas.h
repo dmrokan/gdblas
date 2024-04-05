@@ -21,7 +21,7 @@ public:
 
 	Variant new_mat(Variant p_rows, int p_cols);
 	Variant new_complex_mat(Variant p_rows, int p_cols);
-	Variant linspace(GDBlasMat::scalar_t p_start, GDBlasMat::scalar_t p_end, GDBlasMat::s_t p_count);
+	Variant linspace(GDBlasMat::scalar_t p_start, GDBlasMat::scalar_t p_end, int p_count);
 
 	Variant get_version();
 };

@@ -1225,7 +1225,7 @@ public:
 	}
 
 	static Ref<GDBlasMat> _linspace_implementation(scalar_t start, scalar_t end,
-			s_t count, int *error) {
+			int count, int *error) {
 		if (count < 2) {
 			*error = ERR_INVALID_DIM;
 

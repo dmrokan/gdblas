@@ -105,7 +105,7 @@ Variant GDBlas::new_complex_mat(Variant p_rows, int p_cols = -1) {
 	return Variant(mat);
 }
 
-Variant GDBlas::linspace(GDBlasMat::scalar_t p_start, GDBlasMat::scalar_t p_end, GDBlasMat::s_t p_count) {
+Variant GDBlas::linspace(GDBlasMat::scalar_t p_start, GDBlasMat::scalar_t p_end, int p_count) {
 	int error = 0;
 	Ref< GDBlasMat > mat = GDBlasMat::_linspace_implementation(p_start, p_end, p_count, &error);
 	if (error) {
