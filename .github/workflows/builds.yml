@@ -101,7 +101,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ github.event.repository.name }}
+          name: '${{ env.LIBNAME }}.zip'
           path: |
             ${{ github.workspace }}/bin/*
       - name: Archive Release
@@ -117,7 +117,7 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           allowUpdates: true
-          artifacts: "${{ env.LIBNAME }}.${{ matrix.platform }}.${{ matrix.arch }}.zip"
+          artifacts: "${{ env.LIBNAME }}.zip"
           omitNameDuringUpdate: true
           omitBodyDuringUpdate: true
           token: ${{ secrets.GITHUB_TOKEN }}
