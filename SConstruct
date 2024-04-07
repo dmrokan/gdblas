@@ -50,7 +50,7 @@ env.Alias("compiledb", compilation_db)
 
 env = SConscript("godot-cpp/SConstruct", {"env": env, "customs": customs})
 
-env.Append(CPPPATH=["src/", "src/eigen/"])
+env.Append(CPPPATH=["src/", "eigen/"])
 sources = Glob("src/*.cpp")
 
 file = "{}{}{}".format(libname, env["suffix"], env["SHLIBSUFFIX"])
@@ -59,15 +59,13 @@ if env["platform"] == "macos":
     platlibname = "{}.{}.{}".format(libname, env["platform"], env["target"])
     file = "{}.framework/{}".format(env["platform"], platlibname, platlibname)
 
-libraryfile = "bin/{}/{}".format(env["platform"], file)
+libraryfile = "demo/addons/gdblas/{}/{}".format(env["platform"], file)
 library = env.SharedLibrary(
     libraryfile,
     source=sources,
 )
 
-copy = env.InstallAs("{}/bin/{}/lib{}".format(projectdir, env["platform"], file), library)
-
-default_args = [library, copy]
+default_args = [library]
 if localEnv.get("compiledb", False):
     default_args += [compilation_db]
 Default(*default_args)

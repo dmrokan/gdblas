@@ -1,0 +1,13 @@
+[configuration]
+
+entry_symbol = "gdblas_library_init"
+compatibility_minimum = "4.2"
+
+[libraries]
+
+macos.debug = "macos/libgdblas.macos.template_debug.framework"
+macos.release = "macos/libgdblas.macos.template_release.framework"
+windows.debug.x86_64 = "windows/libgdblas.windows.template_debug.x86_64.dll"
+windows.release.x86_64 = "windows/libgdblas.windows.template_release.x86_64.dll"
+linux.debug.x86_64 = "linux/libgdblas.linux.template_debug.x86_64.so"
+linux.release.x86_64 = "linux/libgdblas.linux.template_release.x86_64.so"

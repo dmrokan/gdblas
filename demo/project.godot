@@ -19,6 +19,10 @@ config/icon="res://icon.svg"
 
 run/main_run_args="--verbose"
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/gdblas/plugin.cfg")
+
 [input]
 
 zoom_in={

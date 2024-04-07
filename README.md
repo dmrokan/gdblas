@@ -1,5 +1,5 @@
 # GDBlas
-This native [Godot](https://github.com/godotengine/godot) extension provides real and complex matrix algebra. It uses data structures and matrix iterators of (Eigen)[https://gitlab.com/libeigen/eigen] library. Also, there is a demo project with numerous tests and displacement simulation of a flexible structure. Its mathematical model can be found in my [PhD thesis](https://www.proquest.com/openview/28b57f84e375831a4f1ae27be456ba2d/1?pq-origsite=gscholar&cbl=2026366&diss=y) (Chapter 6).
+This native [Godot](https://github.com/godotengine/godot) extension provides real and complex matrix algebra. It uses data structures and matrix iterators of [Eigen](https://gitlab.com/libeigen/eigen) library. Also, there is a demo project with numerous tests and displacement simulation of a flexible structure. Its mathematical model can be found in my [PhD thesis](https://www.proquest.com/openview/28b57f84e375831a4f1ae27be456ba2d/1?pq-origsite=gscholar&cbl=2026366&diss=y) (Chapter 6).
 
 **An example**:
 ```gdscript
