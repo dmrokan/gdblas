@@ -171,4 +171,4 @@ cd gdblas
 git submodule update --init
 scons platform=<platform> target_path=<target_path> target_name=libgdblas
 ```
-You can visit Godot's (build system)[https://docs.godotengine.org/en/stable/contributing/development/compiling/introduction_to_the_buildsystem.html] documentation for more information.
+You can visit Godot's [build system](https://docs.godotengine.org/en/stable/contributing/development/compiling/introduction_to_the_buildsystem.html) documentation for more information.

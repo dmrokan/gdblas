@@ -455,13 +455,13 @@ func test08():
 	b.from_array(A)
 	b.T()
 	var c = a.prod(b)
-	var C = [
+	var C_ = [
 		[  5,  11,  17,  23],
  		[ 11,  25,  39,  53],
  		[ 17,  39,  61,  83],
  		[ 23,  53,  83, 113]
 	]
-	assert(cmp_mat(c.to_array(), C))
+	assert(cmp_mat(c.to_array(), C_))
 
 	var d = b.prod(a)
 	var D = [
@@ -489,6 +489,26 @@ func test08():
 	eye_hat = cinv.prod(c)
 	assert(eye.is_eq(eye_hat, 1e-12))
 
+	var E = [
+		[  5,  11,  17,  -17],
+ 		[ 11,  25,  39,  -39],
+ 		[ 17,  39,  61,  -61],
+ 		[ 23,  53,  83, -83]
+	]
+	var e = gbl.new_mat()
+	e.from_array(E)
+	assert(e.inv() == null)
+
+	var F = [
+		[  5,  11],
+ 		[ 11,  25],
+ 		[ 17,  39],
+ 		[ 23,  53]
+	]
+	var f = gbl.new_mat()
+	f.from_array(F)
+	assert(f.inv() == null)
+
 func test09():
 	print("test09")
 
@@ -510,13 +530,13 @@ func test09():
 	b.H()
 
 	var c = a.prod(b)
-	var C = [
+	var C_ = [
 		[ 10,  22,  34,  46],
  		[ 22,  50,  78, 106],
  		[ 34,  78, 122, 166],
  		[ 46, 106, 166, 226]
 	]
-	assert(cmp_mat(c.to_array(), C))
+	assert(cmp_mat(c.to_array(), C_))
 
 	var d = b.prod(a)
 	var D = [

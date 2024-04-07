@@ -296,7 +296,12 @@ public:
 			}
 
 			int inv(Eigen::MatrixX<U> &inverse) {
-				inverse = matrix().inverse();
+				Eigen::FullPivLU<T> lu(matrix());
+
+				if (!lu.isInvertible())
+					return ERR_SINGULAR_MAT;
+
+				inverse = lu.inverse();
 
 				return 0;
 			}
