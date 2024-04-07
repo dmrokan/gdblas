@@ -115,19 +115,25 @@ jobs:
       - name: Download Artifacts
         id: download
         uses: actions/download-artifact@v3
-      - name: Debug artifacts
-        run: ls -R
+      - name: Copy extension into demo
+        run: cp -fr "${{ github.event.repository.name }}/${{ github.event.repository.name }}" demo/addons
       - name: Archive Release
         uses: thedoctor0/zip-release@0.7.1
         with:
           type: 'zip'
           filename: '${{ github.event.repository.name }}.zip'
           directory: '${{ github.event.repository.name }}'
+      - name: Demo release
+        uses: thedoctor0/zip-release@0.7.1
+        with:
+          type: 'zip'
+          filename: 'demo.zip'
+          path: 'demo'
       - name: Create and upload asset
         uses: ncipollo/release-action@v1
         with:
           allowUpdates: true
-          artifacts: '${{ github.event.repository.name }}/${{ github.event.repository.name }}.zip'
+          artifacts: "${{ github.event.repository.name }}/${{ github.event.repository.name }}.zip,demo.zip"
           omitNameDuringUpdate: true
           omitBodyDuringUpdate: true
           token: ${{ secrets.GITHUB_TOKEN }}
