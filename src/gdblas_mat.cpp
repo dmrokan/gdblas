@@ -60,6 +60,7 @@ void GDBlasMat::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("max", "p_axis"), &GDBlasMat::max, DEFVAL(-1));
 	ClassDB::bind_method(D_METHOD("argmin", "p_axis"), &GDBlasMat::argmin, DEFVAL(-1));
 	ClassDB::bind_method(D_METHOD("argmax", "p_axis"), &GDBlasMat::argmax, DEFVAL(-1));
+	ClassDB::bind_method(D_METHOD("f", "p_func", "p_args"), &GDBlasMat::unary_func, DEFVAL(Variant()));
 }
 
 Variant GDBlasMat::resize(int m, int n) {
@@ -108,7 +109,7 @@ Variant GDBlasMat::get(int i, int j, int m, int n) {
 
 	Dimension d = _size();
 
-	if (i >= d.m || j >= d.n || i < 0 || j < 0) {
+	if (i >= (int) d.m || j >= (int) d.n || i < 0 || j < 0) {
 		GDBLAS_ERROR("i >= d.m || j >= d.n || i < 0 || j < 0");
 
 		return ERR_INVALID_INDEX;
@@ -122,7 +123,7 @@ Variant GDBlasMat::get(int i, int j, int m, int n) {
 		}
 
 		return ctx()->get(i, j);
-	} else if (i + m > d.m || j + n > d.n) {
+	} else if (i + m > (int) d.m || j + n > (int) d.n) {
 		GDBLAS_ERROR("Can not get submatrix of size (%dx%d) from "
 					  "matrix of size (%dx%d) at index (%dx%d)", m, n,
 					  d.m, d.n, i, j);
@@ -196,7 +197,7 @@ Variant GDBlasMat::set(Variant val, int i, int j) {
 
 	Dimension d = _size();
 
-	if (i >= d.m || j >= d.n) {
+	if (i >= (int) d.m || j >= (int) d.n) {
 		GDBLAS_ERROR("i >= d.m || j >= d.n");
 
 		return ERR_INVALID_INDEX;
@@ -661,8 +662,6 @@ Variant GDBlasMat::prod(Variant other) {
 }
 
 Variant GDBlasMat::inv() {
-	Dimension d = _size();
-
 	if (_is_zero_dim()) {
 		GDBLAS_ERROR("Matrix is dimensionless");
 
@@ -767,7 +766,7 @@ Variant GDBlasMat::from_array(Array p_array) {
 #define MATH_FUNC_GEN(func) do { \
 	int type = get_type(); \
 	if (type == BLAS_MATRIX) { \
-		ctx()->get_real_mdata()->elementwise_func(static_cast< scalar_t(*)(scalar_t) >(func)); \
+		ctx()->get_real_mdata()->elementwise_func(static_cast<scalar_t(*)(scalar_t)>(func)); \
 	} else if (type == BLAS_COMPLEX_MATRIX) { \
 		ctx()->get_complex_mdata()->elementwise_func(static_cast<complex_t(*)(const complex_t&)>(func)); \
 	} else { \
@@ -1078,4 +1077,53 @@ Variant GDBlasMat::argmax(int axis) {
 	Array arg = _arg_min_max_implementation(axis, &error, false);
 
 	return arg;
+}
+
+Variant GDBlasMat::unary_func(Callable p_func, Variant p_args) {
+	int type = get_type();
+	int args_type = p_args.get_type();
+
+	if (args_type != Variant::ARRAY && args_type != Variant::NIL) {
+		return ERR_INVALID_INPUT;
+	}
+
+	Array args = p_args;
+
+	auto func_rr = [&](scalar_t &a) -> scalar_t {
+		if (args_type == Variant::NIL)
+			return p_func.call(a);
+		else if (args_type == Variant::ARRAY)
+			return p_func.call(a, args);
+
+		return 0;
+	};
+	auto func_cc = [&](complex_t &a) -> complex_t {
+		if (args_type == Variant::NIL)
+			return _variant_to_complex(p_func.call(_complex_to_variant(a)));
+		else if (args_type == Variant::ARRAY)
+			return _variant_to_complex(p_func.call(_complex_to_variant(a), args));
+
+		return 0.0;
+	};
+
+	Variant tmp;
+	if (args_type == Variant::ARRAY)
+		tmp = p_func.call(1.0, args);
+	else if (args_type == Variant::NIL)
+		tmp = p_func.call(1.0);
+
+	if (!((_is_real_number(tmp) && type == BLAS_MATRIX) || (_is_complex_number(tmp) && BLAS_COMPLEX_MATRIX))) {
+		GDBLAS_ERROR("Callable must return number for real matrix and Vector2 for complex matrix");
+		return ERR_INVALID_TYPE;
+	}
+
+	if (type == BLAS_MATRIX) {
+		ctx()->get_real_mdata()->elementwise_func(func_rr);
+	} else if (type == BLAS_COMPLEX_MATRIX) {
+		ctx()->get_complex_mdata()->elementwise_func(func_cc);
+	} else {
+		return ERR_INVALID_TYPE;
+	}
+
+	return 0;
 }

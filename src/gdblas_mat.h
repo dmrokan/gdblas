@@ -20,13 +20,13 @@
 #define GDBLAS_NaN std::nan("nan")
 #define GDBLAS_MAX(a, b) (a > b ? a : b)
 #define GDBLAS_MIN(a, b) (a < b ? a : b)
-#define GDBLAS_SIZE_CAST(a) ((s_t)GDBLAS_MIN(GDBLAS_MAX(a, 0), std::numeric_limits<s_t>::max()))
+#define GDBLAS_SIZE_CAST(a) ((s_t)GDBLAS_MIN((s_t)GDBLAS_MAX(a, 0), std::numeric_limits<s_t>::max()))
 
 namespace godot {
 class GDBlas;
 
 class GDBlasMat : public RefCounted {
-	GDCLASS(GDBlasMat, RefCounted);
+	GDCLASS(GDBlasMat, RefCounted)
 
 public:
 	typedef size_t s_t;
@@ -65,9 +65,18 @@ public:
 	static constexpr scalar_t EPS = 1e-16;
 	static constexpr index_t INVALID_INDEX{ -1, -1 };
 
-protected:
-	GDBlas *_gdblas_ref;
+	static GDBlasMat *_cast(Variant &v) {
+		Object *tmp = v;
+		if (tmp == nullptr)
+			return nullptr;
 
+		return dynamic_cast<GDBlasMat *>(tmp);
+	}
+
+	template <class T>
+	static void ignore_unused(T &) {}
+
+protected:
 	static void _bind_methods();
 
 	_ALWAYS_INLINE_ bool _is_real_number(Variant &v) {
@@ -115,12 +124,8 @@ protected:
 		return c;
 	}
 
-	GDBlasMat *_cast(Variant &v) {
-		Object *tmp = v;
-		if (tmp == nullptr)
-			return nullptr;
-
-		return dynamic_cast<GDBlasMat *>(tmp);
+	_ALWAYS_INLINE_ complex_t _variant_to_complex(Variant &&c) {
+		return _variant_to_complex(c);
 	}
 
 	_ALWAYS_INLINE_ Dimension _size() {
@@ -236,7 +241,7 @@ public:
 				GDBLAS_V_DEBUG("Created real ctx: %p", this);
 			}
 
-			~BaseMatrixData() {
+			virtual ~BaseMatrixData() {
 				GDBLAS_V_DEBUG("Deleted real ctx: %p", this);
 			}
 
@@ -283,7 +288,7 @@ public:
 			}
 
 			void fill(U &s, bool diag = false) {
-				for (s_t i = 0; i < matrix().rows(); ++i) {
+				for (Eigen::Index i = 0; i < matrix().rows(); ++i) {
 					if (diag) {
 						if (i >= matrix().cols())
 							break;
@@ -310,7 +315,7 @@ public:
 			void elementwise_func(Func &&func) {
 				T &m = matrix();
 
-				for (s_t i = 0; i < m.rows(); ++i) {
+				for (Eigen::Index i = 0; i < m.rows(); ++i) {
 					for (auto iter = m.row(i).begin(); iter != m.row(i).end(); ++iter) {
 						*iter = func(*iter);
 					}
@@ -319,7 +324,7 @@ public:
 
 			template <typename Func, typename Arg>
 			void elementwise_func(Func &&func, Arg &mat) {
-				for (s_t i1 = 0, i2 = 0; i1 < matrix().rows() && i2 < mat.rows(); ++i1, i2++) {
+				for (Eigen::Index i1 = 0, i2 = 0; i1 < matrix().rows() && i2 < mat.rows(); ++i1, i2++) {
 					auto iter1 = matrix().row(i1).begin();
 					auto iter2 = mat.row(i2).begin();
 
@@ -352,12 +357,12 @@ public:
 
 				if (axis <= 0) {
 					out.resize(1, m.cols());
-					for (s_t idx1 = 0; idx1 < out.cols(); ++idx1) {
+					for (Eigen::Index idx1 = 0; idx1 < out.cols(); ++idx1) {
 						out.coeffRef(0, idx1) = _vector_accumulator(func, m.col(idx1), idx1);
 					}
 				} else if (axis == 1) {
 					out.resize(m.rows(), 1);
-					for (s_t idx1 = 0; idx1 < out.rows(); ++idx1) {
+					for (Eigen::Index idx1 = 0; idx1 < out.rows(); ++idx1) {
 						out.coeffRef(idx1, 0) = _vector_accumulator(func, m.row(idx1), idx1);
 					}
 				}
@@ -375,6 +380,9 @@ public:
 			template <typename Func>
 			int _matrix_accumulator(Func &func, T &out, int axis) {
 				auto lsum = [](U &a, U &b, s_t i, s_t j) {
+					ignore_unused(i);
+					ignore_unused(j);
+
 					return a + b;
 				};
 
@@ -383,6 +391,9 @@ public:
 
 			int integrate(T &out, int axis) {
 				auto lsum = [](U &a, U &b, s_t i, s_t j) {
+					ignore_unused(i);
+					ignore_unused(j);
+
 					return a + b;
 				};
 
@@ -390,10 +401,6 @@ public:
 			}
 
 			int mean(T &out, int axis) {
-				auto lsum = [](U &a, U &b, s_t i, s_t j) {
-					return a + b;
-				};
-
 				Dimension d = dimension();
 
 				scalar_t s = 1.0;
@@ -414,7 +421,8 @@ public:
 				return 0;
 			}
 
-			int max(T &out, int axis) {
+			template <typename Func>
+			int _minmax(T &out, int axis, Func &&func, scalar_t fill_with) {
 				Dimension d = dimension();
 
 				std::vector<U> max_val(1);
@@ -423,12 +431,14 @@ public:
 				else if (axis == 1)
 					max_val.resize(d.m);
 
-				std::fill(max_val.begin(), max_val.end(), std::numeric_limits<scalar_t>::lowest());
+				std::fill(max_val.begin(), max_val.end(), fill_with);
 
 				auto lmax = [&](U &a, U &b, s_t i, s_t j) {
+					ignore_unused(a);
+					ignore_unused(j);
 					auto &m = max_val[GDBLAS_MIN(max_val.size() - 1, i)];
 
-					if (std::real(b) > std::real(m))
+					if (func(std::real(b), std::real(m)))
 						m = b;
 
 					return m;
@@ -437,51 +447,42 @@ public:
 				return _matrix_accumulator(lmax, out, axis, lmax);
 			}
 
-			int min(T &out, int axis) {
-				Dimension d = dimension();
-
-				std::vector<U> min_val(1);
-				if (axis == 0)
-					min_val.resize(d.n);
-				else if (axis == 1)
-					min_val.resize(d.m);
-
-				std::fill(min_val.begin(), min_val.end(), std::numeric_limits<scalar_t>::max());
-
-				auto lmin = [&](U &a, U &b, s_t i, s_t j) {
-					auto &m = min_val[GDBLAS_MIN(min_val.size() - 1, i)];
-
-					if (std::real(b) < std::real(m))
-						m = b;
-
-					return m;
-				};
-
-				return _matrix_accumulator(lmin, out, axis, lmin);
+			_ALWAYS_INLINE_ int max(T &out, int axis) {
+				return _minmax(
+						out, axis, [](scalar_t &&a, scalar_t &&b) -> bool { return a > b; },
+						std::numeric_limits<scalar_t>::lowest());
 			}
 
-			int argmax(std::vector<index_t> &arg_max, int axis) {
+			_ALWAYS_INLINE_ int min(T &out, int axis) {
+				return _minmax(
+						out, axis, [](scalar_t &&a, scalar_t &&b) -> bool { return a < b; },
+						std::numeric_limits<scalar_t>::max());
+			}
+
+			template <typename Func>
+			int _argminmax(std::vector<index_t> &arg_minmax, int axis, Func &&func, scalar_t fill_with) {
 				Dimension d = dimension();
 
 				T out;
-				std::vector<U> max_val(1);
+				std::vector<U> minmax_val(1);
 
 				if (axis == 0) {
-					max_val.resize(d.n);
-					arg_max.resize(d.n);
+					minmax_val.resize(d.n);
+					arg_minmax.resize(d.n);
 				} else if (axis == 1) {
-					max_val.resize(d.m);
-					arg_max.resize(d.m);
+					minmax_val.resize(d.m);
+					arg_minmax.resize(d.m);
 				}
 
-				std::fill(max_val.begin(), max_val.end(), std::numeric_limits<scalar_t>::lowest());
-				std::fill(arg_max.begin(), arg_max.end(), INVALID_INDEX);
+				std::fill(minmax_val.begin(), minmax_val.end(), fill_with);
+				std::fill(arg_minmax.begin(), arg_minmax.end(), INVALID_INDEX);
 
-				auto lmax = [&](U &a, U &b, s_t i, s_t j) {
-					auto &m = max_val[GDBLAS_MIN(max_val.size() - 1, i)];
-					index_t &idx = arg_max[GDBLAS_MIN(arg_max.size() - 1, i)];
+				auto lminmax = [&](U &a, U &b, s_t i, s_t j) {
+					ignore_unused(a);
+					auto &m = minmax_val[GDBLAS_MIN(minmax_val.size() - 1, i)];
+					index_t &idx = arg_minmax[GDBLAS_MIN(arg_minmax.size() - 1, i)];
 
-					if (std::real(b) > std::real(m)) {
+					if (func(std::real(b), std::real(m))) {
 						m = b;
 						if (axis <= 0) {
 							idx[0] = j;
@@ -495,45 +496,19 @@ public:
 					return m;
 				};
 
-				return _matrix_accumulator(lmax, out, axis, lmax);
+				return _matrix_accumulator(lminmax, out, axis, lminmax);
 			}
 
-			int argmin(std::vector<index_t> &arg_min, int axis) {
-				Dimension d = dimension();
+			_ALWAYS_INLINE_ int argmax(std::vector<index_t> &arg_max, int axis) {
+				return _argminmax(
+						arg_max, axis, [](scalar_t &&a, scalar_t &&b) -> bool { return a > b; },
+						std::numeric_limits<scalar_t>::lowest());
+			}
 
-				T out;
-				std::vector<U> min_val(1);
-
-				if (axis == 0) {
-					min_val.resize(d.n);
-					arg_min.resize(d.n);
-				} else if (axis == 1) {
-					min_val.resize(d.m);
-					arg_min.resize(d.m);
-				}
-
-				std::fill(min_val.begin(), min_val.end(), std::numeric_limits<scalar_t>::max());
-				std::fill(arg_min.begin(), arg_min.end(), INVALID_INDEX);
-
-				auto lmin = [&](U &a, U &b, s_t i, s_t j) {
-					auto &m = min_val[GDBLAS_MIN(min_val.size() - 1, i)];
-					index_t &idx = arg_min[GDBLAS_MIN(arg_min.size() - 1, i)];
-
-					if (std::real(b) < std::real(m)) {
-						m = b;
-						if (axis <= 0) {
-							idx[0] = j;
-							idx[1] = i;
-						} else if (axis == 1) {
-							idx[0] = i;
-							idx[1] = j;
-						}
-					}
-
-					return m;
-				};
-
-				return _matrix_accumulator(lmin, out, axis, lmin);
+			_ALWAYS_INLINE_ int argmin(std::vector<index_t> &arg_min, int axis) {
+				return _argminmax(
+						arg_min, axis, [](scalar_t &&a, scalar_t &&b) -> bool { return a < b; },
+						std::numeric_limits<scalar_t>::max());
 			}
 
 			U l1_norm(int *error) {
@@ -541,6 +516,9 @@ public:
 				T tmp;
 
 				auto labssum = [](U &a, U &b, s_t i, s_t j) {
+					ignore_unused(i);
+					ignore_unused(j);
+
 					return a + std::abs(b);
 				};
 
@@ -562,6 +540,9 @@ public:
 				T tmp;
 
 				auto labssum = [](U &a, U &b, s_t i, s_t j) {
+					ignore_unused(i);
+					ignore_unused(j);
+
 					return a + std::abs(b);
 				};
 
@@ -583,6 +564,9 @@ public:
 				T tmp;
 
 				auto lsqsum = [](U &a, U &b, s_t i, s_t j) {
+					ignore_unused(i);
+					ignore_unused(j);
+
 					complex_t c = b;
 					return a + std::norm(c);
 				};
@@ -643,11 +627,11 @@ public:
 				delete get_complex_mdata();
 		}
 
-		void get_mdata_ptr(RealMatrixData **ptr) {
+		_ALWAYS_INLINE_ void get_mdata_ptr(RealMatrixData **ptr) {
 			*ptr = mdata.r;
 		}
 
-		void get_mdata_ptr(ComplexMatrixData **ptr) {
+		_ALWAYS_INLINE_ void get_mdata_ptr(ComplexMatrixData **ptr) {
 			*ptr = mdata.c;
 		}
 
@@ -693,7 +677,7 @@ public:
 			get_mdata<T1>()->clear();
 		}
 
-		complex_t getc(s_t i, s_t j) {
+		_ALWAYS_INLINE_ complex_t getc(s_t i, s_t j) {
 			if (type == BLAS_COMPLEX_MATRIX) {
 				return get_complex_mdata()->get(i, j);
 			}
@@ -704,14 +688,14 @@ public:
 			return c;
 		}
 
-		scalar_t get(s_t i, s_t j) {
+		_ALWAYS_INLINE_ scalar_t get(s_t i, s_t j) {
 			if (type == BLAS_COMPLEX_MATRIX)
 				return GDBLAS_NaN;
 
 			return get_real_mdata()->get(i, j);
 		}
 
-		int set(complex_t &v, s_t i, s_t j) {
+		_ALWAYS_INLINE_ int set(complex_t &v, s_t i, s_t j) {
 			if (type == BLAS_COMPLEX_MATRIX) {
 				get_complex_mdata()->set(v, i, j);
 
@@ -721,11 +705,11 @@ public:
 			return ERR_INVALID_INDEX;
 		}
 
-		int set(complex_t &&v, s_t i, s_t j) {
+		_ALWAYS_INLINE_ int set(complex_t &&v, s_t i, s_t j) {
 			return set(v, i, j);
 		}
 
-		int set(scalar_t v, s_t i, s_t j) {
+		_ALWAYS_INLINE_ int set(scalar_t v, s_t i, s_t j) {
 			if (type == BLAS_COMPLEX_MATRIX) {
 				complex_t c;
 				c.real(v);
@@ -762,7 +746,7 @@ public:
 			} else if (type == BLAS_MATRIX && other->type == BLAS_MATRIX) {
 				get_real_mdata()->set(other->get_real_mdata()->matrix(), i, j);
 			} else {
-				GDBLAS_ERROR("Can not set a complex value to a real matrix");
+				GDBLAS_ERROR("Can not place a complex entry to a real matrix");
 
 				return ERR_INVALID_TYPE;
 			}
@@ -794,7 +778,14 @@ public:
 			tmp_mat_data.matrix() = get_mdata<T1>()->matrix() - other->get_mdata<T2>()->matrix();
 
 			int error = 0;
-			scalar_t l = std::real(tmp_mat_data.fro_norm(&error));
+			scalar_t l = std::numeric_limits<scalar_t>::max();
+			if (norm_type == NORM_1)
+				l = std::real(tmp_mat_data.l1_norm(&error));
+			else if (norm_type == NORM_INF)
+				l = std::real(tmp_mat_data.linf_norm(&error));
+			else if (norm_type == NORM_FRO)
+				l = std::real(tmp_mat_data.fro_norm(&error));
+
 			if (!error && l < eps)
 				return true;
 
@@ -842,7 +833,7 @@ public:
 
 			Matrix &m = get_real_mdata()->matrix();
 
-			for (s_t j = 0; j < m.cols(); ++j) {
+			for (Eigen::Index j = 0; j < m.cols(); ++j) {
 				scalar_t x = start;
 
 				auto iter = m.col(j).begin();
@@ -962,7 +953,7 @@ public:
 	Context *m_ctx;
 
 	GDBlasMat() :
-			m_ctx(nullptr), _gdblas_ref(nullptr) {
+			m_ctx(nullptr) {
 		GDBLAS_V_DEBUG("Created GDBlasMat: %lu", get_instance_id());
 	}
 
@@ -1138,12 +1129,19 @@ public:
 
 	int _fill_implementation(scalar_t s, bool diag = false) {
 		if (get_type() == BLAS_MATRIX) {
-			ctx()->fill<Context::RealMatrixData, scalar_t>(s, diag);
+			if (s == 0.0 && !diag)
+				ctx()->clear<Context::RealMatrixData>();
+			else
+				ctx()->fill<Context::RealMatrixData, scalar_t>(s, diag);
 		} else if (get_type() == BLAS_COMPLEX_MATRIX) {
-			complex_t c;
-			c.real(s);
+			if (s == 0.0 && !diag) {
+				ctx()->clear<Context::ComplexMatrixData>();
+			} else {
+				complex_t c;
+				c.real(s);
 
-			ctx()->fill<Context::ComplexMatrixData, complex_t>(c, diag);
+				ctx()->fill<Context::ComplexMatrixData, complex_t>(c, diag);
+			}
 		} else {
 			return ERR_INVALID_TYPE;
 		}
@@ -1185,7 +1183,6 @@ public:
 	}
 
 	int _set_real_implementation(GDBlasMat *other) {
-		Dimension d = other->_size();
 		int type1 = get_type();
 		int type2 = other->get_type();
 
@@ -1218,8 +1215,6 @@ public:
 	}
 
 	int _set_imag_implementation(GDBlasMat *other) {
-		Dimension d = other->_size();
-
 		if (get_type() == BLAS_COMPLEX_MATRIX && other->get_type() == BLAS_MATRIX) {
 			ctx()->set_real_or_imag(other->ctx(), false, false);
 		} else {
@@ -1398,6 +1393,7 @@ public:
 	Variant max(int axis = -1);
 	Variant argmin(int axis = -1);
 	Variant argmax(int axis = -1);
+	Variant unary_func(Callable p_func, Variant p_args);
 };
 } //namespace godot
 

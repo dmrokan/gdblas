@@ -138,6 +138,22 @@ will print
 ### Elementwise functions
 A list of implemented math functions are given below. They operate elementwise on the matrix and modifies matrix itself instead of creating a copy. You can visit C++ stdlib documentation for mathematical meaning of these functions.
 
+- `f(p_func: Callable, p_args: Array)`: Applies `p_func` on each matrix entry and writes the result in place.
+```gdscript
+func add_1(a):
+	return a + 1
+
+func add_const(a, args):
+	return a + args[0]
+
+func some_func():
+	var gbl = GDBlas.new()
+	var A = gbl.new_mat(2, 2)
+	A.f(add_1)
+	A.f(add_const, [ 3 ])
+```
+**NOTE**: If the matrix is complex, first argument of callable is a `Vector2` and its return type must also be `Vector2`.
+
 - `sin()`
 - `cos()`
 - `abs()`

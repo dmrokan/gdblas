@@ -127,6 +127,7 @@ func _ready():
 	test11()
 	test12()
 	test13()
+	test14()
 
 func test01():
 	print("test01")
@@ -643,6 +644,18 @@ func test12():
 	assert(cmp_scalar(mat1c.norm(GDBlas.NORM_INF), 721.2489168))
 	assert(cmp_scalar(mat1c.norm(GDBlas.NORM_FRO), 645.9196662))
 
+func gdblas_cos(a):
+	if a < 0.74:
+		return cos(a)
+
+	return -1
+
+func gdblas_sin(a, args):
+	if a < 0.74:
+		return sin(a + args[0])
+
+	return -1
+
 func test13():
 	print("test13")
 
@@ -661,6 +674,12 @@ func test13():
 	y = x.copy(); y.cos()
 	assert(cmp_mat(y.to_array(), [ [1.        , 0.98006658, 0.92106099, 0.82533561, 0.69670671,
 	   0.54030231] ]))
+
+	y = x.copy(); y.f(gdblas_cos)
+	assert(cmp_mat(y.to_array(), [ [1.        , 0.98006658, 0.92106099, 0.82533561, -1, -1] ]))
+
+	y = x.copy(); y.f(gdblas_sin, [ PI / 2])
+	assert(cmp_mat(y.to_array(), [ [1.        , 0.98006658, 0.92106099, 0.82533561, -1, -1] ]))
 
 	y = x.copy(); y.mul(-1); y.abs()
 	assert(cmp_mat(y.to_array(), [ [0, 0.2, 0.4, 0.6, 0.8, 1] ]))
@@ -688,6 +707,32 @@ func test13():
 	y = x.copy(); y.cbrt()
 	assert(cmp_mat(y.to_array(), [ [0.        , 0.58480355, 0.7368063 , 0.84343267, 0.92831777,
 	   1.        ] ]))
+
+func gdblas_exp1(a: Vector2) -> Vector2:
+	return Vector2(cos(a.y), sin(a.y))
+
+func gdblas_exp2(a: Vector2, args: Array) -> Vector2:
+	return Vector2(cos(a.y), sin(a.y)) * args[0] + args[1]
+
+func test14():
+	print("test14")
+
+	var gbl = GDBlas.new()
+	var x = gbl.linspace(0, 1, 6)
+	var z = gbl.new_complex_mat(x.dimension())
+	z.imag(x)
+	z.H()
+
+	assert(cmp_mat(z.to_array(), [ [C(0, 0), C(0, -0.2), C(0, -0.4), C(0, -0.6), C(0, -0.8), C(0, -1)] ]))
+
+	var y1 = z.copy(); y1.f(gdblas_exp1)
+	var y2 = z.copy(); y2.exp()
+	assert(y1.is_eq(y2, 1e-7))
+
+	y1 = z.copy(); y1.f(gdblas_exp2, [ 2, C(1, -1) ])
+	y2 = z.copy(); y2.exp(); y2.mul(2); y2.add(C(1, -1))
+	assert(y1.is_eq(y2, 1e-6))
+
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta):
