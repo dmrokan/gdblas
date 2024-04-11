@@ -158,14 +158,7 @@ func init_path():
 	var dp = (LAST_POINT - FIRST_POINT) / NUM_POINTS
 	var point = FIRST_POINT
 	for n in range(NUM_POINTS + 1):
-		if n % 2 == 1:
-			point.y += 25
-
 		curve_points.append(point)
-
-		if n % 2 == 1:
-			point.y -= 25
-
 		point += dp
 
 	_create_beam(curve_points)

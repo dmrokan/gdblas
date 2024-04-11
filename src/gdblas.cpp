@@ -1,6 +1,5 @@
 #include "gdblas.h"
 
-
 using namespace godot;
 
 

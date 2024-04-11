@@ -952,8 +952,16 @@ public:
 
 	Context *m_ctx;
 
+#ifdef GDBLAS_WITH_ODE
+	double m_prev_end_time;
+#endif
+
 	GDBlasMat() :
 			m_ctx(nullptr) {
+#ifdef GDBLAS_WITH_ODE
+		m_prev_end_time = 0.0;
+#endif
+
 		GDBLAS_V_DEBUG("Created GDBlasMat: %lu", get_instance_id());
 	}
 
@@ -1394,6 +1402,10 @@ public:
 	Variant argmin(int axis = -1);
 	Variant argmax(int axis = -1);
 	Variant unary_func(Callable p_func, Variant p_args);
+
+#ifdef GDBLAS_WITH_ODE
+	Variant eval_ode(Callable p_f, double p_dt, double p_max_step = 1e-2);
+#endif
 };
 } //namespace godot
 

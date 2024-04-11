@@ -134,6 +134,21 @@ will print
 - `argmin(axis = -1)`: Finds the index of minimum of matrix entries on given axis. `axis=0`: min over rows, `axis=1`: min of cols, `axis=-1`: (default) min of all entries. Returns an `Array` of `Vector2i` containing the index o minimums.
 - `argmax(axis = -1)`: Finds the index of maximum of matrix entries on given axis. `axis=0`: max over rows, `axis=1`: max of cols, `axis=-1`: (default) max of all entries. Returns an `Array` of `Vector2i` containing the index o minimums.
 - `norm(norm_type)`: Computes $L1$, $L_{\infty}$ or Frobenius norm of matrix. Accepted arguments are `GDBlas.NORM_1`, `GDBlas.NORM_INF` or `GDBlas.NORM_FRO`. Returns `float`.
+- `eval_ode(p_f: Callable, p_dt: float, p_max_step: float = 1e-2)`: Evaluates the ordinary differential equation (ODE) defined in `p_f` for an amount of time given by `p_dt` starting from the current value of matrix. It can be called on only real n by 1 matrices (equivalent to a column vector). Returns the step count (how many times the ODE function is evaluated) or a negative value on error.
+```gdscript
+var A: GDBlasMat = null
+func ode_fx(x: GDBlasMat, t: float):
+	return a + args[0]
+
+func some_func():
+	var gbl = GDBlas.new()
+	A = gbl.new_mat(2)
+	A.eye(-1)
+	var x = gbl.new_mat(2, 1)
+	x.fill(1)
+
+	x.eval_ode(ode_fx, 0.5, 1e-3) # Writes final value at t = 0.5 into x itself
+```
 
 ### Elementwise functions
 A list of implemented math functions are given below. They operate elementwise on the matrix and modifies matrix itself instead of creating a copy. You can visit C++ stdlib documentation for mathematical meaning of these functions.
@@ -184,7 +199,18 @@ func some_func():
 ```sh
 git clone https://github.com/dmrokan/gdblas.git
 cd gdblas
-git submodule update --init
+git submodule update --init --recursive
+```
+**Build boost**
+```sh
+cd boost
+./bootstrap.sh
+./b2 headers
+```
+You can visit [Boost wiki](https://github.com/boostorg/wiki/wiki) for more information.
+
+**Build extension**
+```sh
 scons platform=<platform> target_path=<target_path> target_name=libgdblas
 ```
 You can visit Godot's [build system](https://docs.godotengine.org/en/stable/contributing/development/compiling/introduction_to_the_buildsystem.html) documentation for more information.

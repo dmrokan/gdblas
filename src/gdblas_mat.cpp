@@ -1,5 +1,12 @@
 #include "gdblas_mat.h"
 
+#ifdef GDBLAS_WITH_ODE
+#define BOOST_NO_EXCEPTIONS
+#include <boost/numeric/odeint.hpp>
+void boost::throw_exception(std::exception const & e) {}
+void boost::throw_exception(std::exception const & e, boost::source_location const & loc) {}
+#endif
+
 
 using namespace godot;
 
@@ -61,6 +68,11 @@ void GDBlasMat::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("argmin", "p_axis"), &GDBlasMat::argmin, DEFVAL(-1));
 	ClassDB::bind_method(D_METHOD("argmax", "p_axis"), &GDBlasMat::argmax, DEFVAL(-1));
 	ClassDB::bind_method(D_METHOD("f", "p_func", "p_args"), &GDBlasMat::unary_func, DEFVAL(Variant()));
+
+#ifdef GDBLAS_WITH_ODE
+	ClassDB::bind_method(D_METHOD("eval_ode", "p_f", "p_dt", "p_max_step"), &GDBlasMat::eval_ode,
+						 DEFVAL(1e-2));
+#endif
 }
 
 Variant GDBlasMat::resize(int m, int n) {
@@ -1112,7 +1124,8 @@ Variant GDBlasMat::unary_func(Callable p_func, Variant p_args) {
 	else if (args_type == Variant::NIL)
 		tmp = p_func.call(1.0);
 
-	if (!((_is_real_number(tmp) && type == BLAS_MATRIX) || (_is_complex_number(tmp) && BLAS_COMPLEX_MATRIX))) {
+	if (!((_is_real_number(tmp) && type == BLAS_MATRIX)
+		  || (_is_complex_number(tmp) && type == BLAS_COMPLEX_MATRIX))) {
 		GDBLAS_ERROR("Callable must return number for real matrix and Vector2 for complex matrix");
 		return ERR_INVALID_TYPE;
 	}
@@ -1127,3 +1140,70 @@ Variant GDBlasMat::unary_func(Callable p_func, Variant p_args) {
 
 	return 0;
 }
+
+#ifdef GDBLAS_WITH_ODE
+Variant GDBlasMat::eval_ode(Callable p_f, double p_dt, double p_max_step) {
+	typedef std::vector<scalar_t> state_type;
+
+	Dimension d = _size();
+
+	if (!d.m || d.n != 1) {
+		GDBLAS_ERROR("ODE can be evaluated on only column vectors");
+
+		return ERR_INVALID_DIM;
+	}
+
+	if (get_type() != BLAS_MATRIX) {
+		GDBLAS_ERROR("ODE can be evaluated on only real vectors");
+
+		return ERR_INVALID_TYPE;
+	}
+
+	int64_t result = 0;
+
+#define VEC_TMP(m) m->ctx()->get_real_mdata()->matrix().col(0)
+
+	auto fx_wrapper = [&](const state_type &x, state_type &dx, double t) -> void {
+		Variant tmp = p_f.call(Variant(this), t);
+
+		GDBlasMat *dx_mat = _cast(tmp);
+		if (dx_mat == nullptr) {
+			GDBLAS_ERROR("ODE Callable must return a matrix of same dimension as its first argument");
+
+			result = ERR_INVALID_INPUT;
+
+			return;
+		}
+
+		if (dx_mat == this) {
+			GDBLAS_ERROR("dx matrix can not be x itself");
+
+			result = ERR_INVALID_INPUT;
+
+			return;
+		}
+
+		dx.assign(VEC_TMP(dx_mat).begin(), VEC_TMP(dx_mat).end());
+	};
+
+	state_type x_tmp(VEC_TMP(this).begin(), VEC_TMP(this).end());
+	double end_time = m_prev_end_time + p_dt;
+	size_t step_count = boost::numeric::odeint::integrate(fx_wrapper, x_tmp,
+														  m_prev_end_time, end_time, p_max_step);
+
+	if (step_count) {
+		auto it1 = VEC_TMP(this).begin();
+		auto it2 = x_tmp.begin();
+		for (; it1 != VEC_TMP(this).end() && it2 != x_tmp.end(); ++it1, ++it2) {
+			*it1 = *it2;
+		}
+	}
+
+#undef VEC_TMP
+
+	if (!result)
+		result = step_count;
+
+	return result;
+}
+#endif

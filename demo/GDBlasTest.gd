@@ -128,6 +128,7 @@ func _ready():
 	test12()
 	test13()
 	test14()
+	test15()
 
 func test01():
 	print("test01")
@@ -733,6 +734,28 @@ func test14():
 	y2 = z.copy(); y2.exp(); y2.mul(2); y2.add(C(1, -1))
 	assert(y1.is_eq(y2, 1e-6))
 
+var A: GDBlasMat = null
+func ode_fx(x: GDBlasMat, t: float):
+	return A.prod(x)
+
+func test15():
+	print("test15")
+
+	var gbl = GDBlas.new()
+	var x = gbl.new_mat(5, 1)
+	if not x.has_method("eval_ode"):
+		print("ODE not enabled, skipping...")
+		return
+
+	x.fill(1.0)
+	A = gbl.new_mat(5)
+	A.eye(-0.01)
+
+	x.eval_ode(ode_fx, 1)
+
+	var xend = x.copy()
+	xend.fill(0.99)
+	assert(x.is_eq(xend, 1e-7))
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta):
