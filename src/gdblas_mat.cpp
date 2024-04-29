@@ -67,7 +67,9 @@ void GDBlasMat::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("max", "p_axis"), &GDBlasMat::max, DEFVAL(-1));
 	ClassDB::bind_method(D_METHOD("argmin", "p_axis"), &GDBlasMat::argmin, DEFVAL(-1));
 	ClassDB::bind_method(D_METHOD("argmax", "p_axis"), &GDBlasMat::argmax, DEFVAL(-1));
-	ClassDB::bind_method(D_METHOD("f", "p_func", "p_args"), &GDBlasMat::unary_func, DEFVAL(Variant()));
+	ClassDB::bind_method(D_METHOD("f", "p_func", "p_args", "p_indexed"),
+						 &GDBlasMat::unary_func, DEFVAL(Variant()), DEFVAL(false));
+	ClassDB::bind_method(D_METHOD("conv", "p_other", "p_same"), &GDBlasMat::conv, DEFVAL(false));
 
 #ifdef GDBLAS_WITH_ODE
 	ClassDB::bind_method(D_METHOD("eval_ode", "p_f", "p_dt", "p_max_step"), &GDBlasMat::eval_ode,
@@ -1091,7 +1093,7 @@ Variant GDBlasMat::argmax(int axis) {
 	return arg;
 }
 
-Variant GDBlasMat::unary_func(Callable p_func, Variant p_args) {
+Variant GDBlasMat::unary_func(Callable p_func, Variant p_args, bool p_indexed) {
 	int type = get_type();
 	int args_type = p_args.get_type();
 
@@ -1109,6 +1111,16 @@ Variant GDBlasMat::unary_func(Callable p_func, Variant p_args) {
 
 		return 0;
 	};
+
+	auto func_rr_ij = [&](scalar_t &a, s_t i, s_t j) -> scalar_t {
+		if (args_type == Variant::NIL)
+			return p_func.call(a, i, j);
+		else if (args_type == Variant::ARRAY)
+			return p_func.call(a, args, i, j);
+
+		return 0;
+	};
+
 	auto func_cc = [&](complex_t &a) -> complex_t {
 		if (args_type == Variant::NIL)
 			return _variant_to_complex(p_func.call(_complex_to_variant(a)));
@@ -1118,11 +1130,27 @@ Variant GDBlasMat::unary_func(Callable p_func, Variant p_args) {
 		return 0.0;
 	};
 
+	auto func_cc_ij = [&](complex_t &a, s_t i, s_t j) -> complex_t {
+		if (args_type == Variant::NIL)
+			return _variant_to_complex(p_func.call(_complex_to_variant(a), i, j));
+		else if (args_type == Variant::ARRAY)
+			return _variant_to_complex(p_func.call(_complex_to_variant(a), args, i, j));
+
+		return 0.0;
+	};
+
 	Variant tmp;
-	if (args_type == Variant::ARRAY)
-		tmp = p_func.call(1.0, args);
-	else if (args_type == Variant::NIL)
-		tmp = p_func.call(1.0);
+	if (args_type == Variant::ARRAY) {
+		if (p_indexed)
+			tmp = p_func.call(1.0, args, 0, 0);
+		else
+			tmp = p_func.call(1.0, args);
+	} else if (args_type == Variant::NIL) {
+		if (p_indexed)
+			tmp = p_func.call(1.0, 0, 0);
+		else
+			tmp = p_func.call(1.0);
+	}
 
 	if (!((_is_real_number(tmp) && type == BLAS_MATRIX)
 		  || (_is_complex_number(tmp) && type == BLAS_COMPLEX_MATRIX))) {
@@ -1131,14 +1159,49 @@ Variant GDBlasMat::unary_func(Callable p_func, Variant p_args) {
 	}
 
 	if (type == BLAS_MATRIX) {
-		ctx()->get_real_mdata()->elementwise_func(func_rr);
+		if (p_indexed)
+			ctx()->get_real_mdata()->elementwise_func_indexed(func_rr_ij);
+		else
+			ctx()->get_real_mdata()->elementwise_func(func_rr);
 	} else if (type == BLAS_COMPLEX_MATRIX) {
-		ctx()->get_complex_mdata()->elementwise_func(func_cc);
+		if (p_indexed)
+			ctx()->get_complex_mdata()->elementwise_func_indexed(func_cc_ij);
+		else
+			ctx()->get_complex_mdata()->elementwise_func(func_cc);
 	} else {
 		return ERR_INVALID_TYPE;
 	}
 
 	return 0;
+}
+
+Variant GDBlasMat::conv(Variant p_other, bool p_same) {
+	if (_is_zero_dim()) {
+		GDBLAS_ERROR("Matrix is dimensionless");
+
+		return Variant();
+	}
+
+	GDBlasMat *o = _cast(p_other);
+
+	if (o == nullptr || this == o) {
+		GDBLAS_ERROR("o == nullptr || this == o");
+
+		return Variant();
+	}
+
+	if (o->_is_zero_dim()) {
+		GDBLAS_ERROR("Matrix is dimensionless");
+
+		return Variant();
+	}
+
+	int error = 0;
+	Ref<GDBlasMat> mat = _conv_implementation(o, p_same, &error);
+	if (error)
+		return Variant();
+
+	return Variant(mat);
 }
 
 #ifdef GDBLAS_WITH_ODE

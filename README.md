@@ -138,7 +138,7 @@ will print
 ```gdscript
 var A: GDBlasMat = null
 func ode_fx(x: GDBlasMat, t: float):
-	return a + args[0]
+	return A.prod(x)
 
 func some_func():
 	var gbl = GDBlas.new()
@@ -149,23 +149,42 @@ func some_func():
 
 	x.eval_ode(ode_fx, 0.5, 1e-3) # Writes final value at t = 0.5 into x itself
 ```
+- `conv(p_other: GDBlasMat, p_same: bool = false)`: Computes convolution of matrices. If `p_same` is `true`, returns the central part of the result.
+```gdscript
+var gbl = GDBlas.new()
+A = gbl.new_mat(m1, n1)
+A.from_array( ... ) # Fill with values.
+B = gbl.new_mat(m2, n2)
+B.from_array( ... ) # Fill with values.
+var C = A.conv(B)
+assert(C.dimension() == Vector2i(m1 + m2 - 1, n1 + n2 -1)
+var D = B.conv(A, 'same')
+assert(D.dimension() == Vector2i(m2, n2)
+```
 
 ### Elementwise functions
 A list of implemented math functions are given below. They operate elementwise on the matrix and modifies matrix itself instead of creating a copy. You can visit C++ stdlib documentation for mathematical meaning of these functions.
 
-- `f(p_func: Callable, p_args: Array)`: Applies `p_func` on each matrix entry and writes the result in place.
+- `f(p_func: Callable, p_args: Array = null, p_indexed: bool = false)`: Applies `p_func` on each matrix entry and writes the result in place. If `p_indexed` is `true`, `p_func` can have additional argumens which gives the row and column number of the matrix entry.
 ```gdscript
 func add_1(a):
 	return a + 1
 
-func add_const(a, args):
+func add_const(a, args: Array):
 	return a + args[0]
+
+func add_const_2(a, args: Array, i: int, j: int):
+	if i < 1 and j < 1:
+		return a + args[0]
+	else:
+		return a
 
 func some_func():
 	var gbl = GDBlas.new()
 	var A = gbl.new_mat(2, 2)
 	A.f(add_1)
 	A.f(add_const, [ 3 ])
+	A.f(add_const_2, [ 3 ], true)
 ```
 **NOTE**: If the matrix is complex, first argument of callable is a `Vector2` and its return type must also be `Vector2`.
 

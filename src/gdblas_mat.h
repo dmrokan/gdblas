@@ -18,12 +18,11 @@
 #include "utils.h"
 
 #define GDBLAS_NaN std::nan("nan")
-#define GDBLAS_MAX(a, b) (a > b ? a : b)
-#define GDBLAS_MIN(a, b) (a < b ? a : b)
+#define GDBLAS_MAX(a, b) ((a) > (b) ? (a) : (b))
+#define GDBLAS_MIN(a, b) ((a) < (b) ? (a) : (b))
 #define GDBLAS_SIZE_CAST(a) ((s_t)GDBLAS_MIN((s_t)GDBLAS_MAX(a, 0), std::numeric_limits<s_t>::max()))
 
 namespace godot {
-class GDBlas;
 
 class GDBlasMat : public RefCounted {
 	GDCLASS(GDBlasMat, RefCounted)
@@ -70,7 +69,7 @@ public:
 		if (tmp == nullptr)
 			return nullptr;
 
-		return dynamic_cast<GDBlasMat *>(tmp);
+		return Object::cast_to<GDBlasMat>(tmp);
 	}
 
 	template <class T>
@@ -318,6 +317,18 @@ public:
 				for (Eigen::Index i = 0; i < m.rows(); ++i) {
 					for (auto iter = m.row(i).begin(); iter != m.row(i).end(); ++iter) {
 						*iter = func(*iter);
+					}
+				}
+			}
+
+			template <typename Func>
+			void elementwise_func_indexed(Func &&func) {
+				T &m = matrix();
+
+				for (Eigen::Index i = 0; i < m.rows(); ++i) {
+					Eigen::Index j = 0;
+					for (auto iter = m.row(i).begin(); iter != m.row(i).end(); ++iter) {
+						*iter = func(*iter, i, j++);
 					}
 				}
 			}
@@ -576,6 +587,45 @@ public:
 					return l;
 
 				return std::sqrt(tmp(0, 0));
+			}
+
+			template <typename T1, typename T2>
+			int conv(T1 *mat1, T2 *mat2, bool same) {
+				Dimension d1 = mat1->dimension();
+				Dimension d2 = mat2->dimension();
+				Dimension d3 = dimension();
+
+				int m1 = d1.m;
+				int n1 = d1.n;
+				int m2 = d2.m;
+				int n2 = d2.n;
+				int i1_0 = same ? m2 / 2 : 0;
+				int i2_0 = same ? n2 / 2 : 0;
+				int i1_1 = same ? m1 + m2 / 2 : d3.m;
+				int i2_1 = same ? n1 + n2 / 2 : d3.n;
+				int yi1_offset = same ? m2 / 2 : 0;
+				int yi2_offset = same ? n2 / 2 : 0;
+
+				for (int i1 = i1_0; i1 < i1_1; ++i1) {
+					for (int i2 = i2_0; i2 < i2_1; ++i2) {
+						int j1_0 = GDBLAS_MAX(i1 - m1 + 1, 0);
+						int j2_0 = GDBLAS_MAX(i2 - n1 + 1, 0);
+						int j1_1 = GDBLAS_MIN(m2, i1 + 1);
+						int j2_1 = GDBLAS_MIN(n2, i2 + 1);
+
+						U yi = 0;
+
+						for (int j1 = j1_0; j1 < j1_1; ++j1) {
+							for (int j2 = j2_0; j2 < j2_1; ++j2) {
+								yi += mat1->get(i1 - j1, i2 - j2) * mat2->get(j1, j2);
+							}
+						}
+
+						set(yi, i1 - yi1_offset, i2 - yi2_offset);
+					}
+				}
+
+				return 0;
 			}
 		};
 
@@ -947,6 +997,28 @@ public:
 			}
 
 			return l;
+		}
+
+		int conv(Context *a, Context *b, bool same) {
+			int error = 0;
+
+			if (type == BLAS_MATRIX) {
+				if (a->type == BLAS_MATRIX && b->type == BLAS_MATRIX)
+					error = get_real_mdata()->conv(a->get_real_mdata(), b->get_real_mdata(), same);
+			} else if (type == BLAS_COMPLEX_MATRIX) {
+				if (a->type == BLAS_COMPLEX_MATRIX && b->type == BLAS_MATRIX)
+					error = get_complex_mdata()->conv(a->get_complex_mdata(), b->get_real_mdata(), same);
+				else if (a->type == BLAS_COMPLEX_MATRIX && b->type == BLAS_COMPLEX_MATRIX)
+					error = get_complex_mdata()->conv(a->get_complex_mdata(), b->get_complex_mdata(), same);
+				else if (a->type == BLAS_MATRIX && b->type == BLAS_COMPLEX_MATRIX)
+					error = get_complex_mdata()->conv(a->get_real_mdata(), b->get_complex_mdata(), same);
+				else
+					error = ERR_INVALID_TYPE;
+			} else {
+				error = ERR_INVALID_TYPE;
+			}
+
+			return error;
 		}
 	};
 
@@ -1342,6 +1414,35 @@ public:
 		return l;
 	}
 
+	Ref<GDBlasMat> _conv_implementation(GDBlasMat *other, bool same, int *error) {
+		Dimension d1 = _size();
+		Dimension d2 = other->_size();
+		Dimension d3;
+		*error = 0;
+
+		if (same) {
+			d3.m = d1.m;
+			d3.n = d1.n;
+		} else {
+			d3.m = d1.m + d2.m - 1;
+			d3.n = d1.n + d2.n - 1;
+		}
+
+		int type1 = get_type();
+		int type2 = get_type();
+		int type3 = type1;
+		if (type3 == BLAS_MATRIX)
+			type3 = type2;
+
+		Ref<GDBlasMat> mat = new_mat(d3.m, d3.n, type3, error);
+		if (*error)
+			return nullptr;
+
+		*error = mat->ctx()->conv(ctx(), other->ctx(), same);
+
+		return mat;
+	}
+
 	int _set_scalar(Variant &val, int i, int j);
 	int _set_submatrix(Variant &val, int i, int j);
 
@@ -1401,7 +1502,8 @@ public:
 	Variant max(int axis = -1);
 	Variant argmin(int axis = -1);
 	Variant argmax(int axis = -1);
-	Variant unary_func(Callable p_func, Variant p_args);
+	Variant unary_func(Callable p_func, Variant p_args, bool p_indexed = false);
+	Variant conv(Variant p_other, bool p_same = false);
 
 #ifdef GDBLAS_WITH_ODE
 	Variant eval_ode(Callable p_f, double p_dt, double p_max_step = 1e-2);

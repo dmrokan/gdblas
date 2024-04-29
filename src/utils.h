@@ -1,8 +1,8 @@
 #ifndef UTILS_H_
 #define UTILS_H_
 
-#include <stdint.h>
-#include <stdlib.h>
+#include <cstdint>
+#include <cstdlib>
 
 void *gdblas_alloc(size_t s);
 void gdblas_free(void *ptr);

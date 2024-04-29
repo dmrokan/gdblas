@@ -129,6 +129,7 @@ func _ready():
 	test13()
 	test14()
 	test15()
+	test16()
 
 func test01():
 	print("test01")
@@ -756,6 +757,46 @@ func test15():
 	var xend = x.copy()
 	xend.fill(0.99)
 	assert(x.is_eq(xend, 1e-7))
+
+func _test16_set_mat(a, i: int, j: int):
+	return i + j;
+
+func test16():
+	print("test16")
+
+	var gbl = GDBlas.new()
+	var A = gbl.new_mat(4, 3)
+	A.f(_test16_set_mat, null, true)
+	var B = A.copy()
+	B.mul(-1)
+
+	var C = A.conv(B)
+	var C1 = gbl.new_mat(C.dimension())
+	assert(C1.from_array(
+		[
+			[0, 0, -1, -4, -4],
+			[0, -2, -8, -14, -12],
+			[-1, -8, -24, -32, -25],
+			[-4, -20, -52, -60, -44],
+			[-10, -32, -69, -68, -46],
+			[-12, -34, -68, -62, -40],
+			[-9, -24, -46, -40, -25]]
+	) == 0)
+	assert(C.is_eq(C1))
+
+	var D = A.conv(B, true)
+	var D1 = gbl.new_mat(A.dimension())
+	assert(D1.from_array(
+		[ [-8, -24, -32], [-20, -52, -60], [-32, -69, -68], [-34, -68, -62] ]
+	) == 0)
+	assert(D.is_eq(D1))
+
+	assert(cmp_mat(D.conv(C1, true).to_array(), [
+		[2408, 6076, 9424],
+		[5756, 12696, 17824],
+		[10126, 20168, 26178],
+		[13552, 24937, 30392]
+	]))
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta):
