@@ -1112,7 +1112,7 @@ Variant GDBlasMat::unary_func(Callable p_func, Variant p_args, bool p_indexed) {
 		return 0;
 	};
 
-	auto func_rr_ij = [&](scalar_t &a, s_t i, s_t j) -> scalar_t {
+	auto func_rr_ij = [&](scalar_t &a, int i, int j) -> scalar_t {
 		if (args_type == Variant::NIL)
 			return p_func.call(a, i, j);
 		else if (args_type == Variant::ARRAY)
@@ -1130,7 +1130,7 @@ Variant GDBlasMat::unary_func(Callable p_func, Variant p_args, bool p_indexed) {
 		return 0.0;
 	};
 
-	auto func_cc_ij = [&](complex_t &a, s_t i, s_t j) -> complex_t {
+	auto func_cc_ij = [&](complex_t &a, int i, int j) -> complex_t {
 		if (args_type == Variant::NIL)
 			return _variant_to_complex(p_func.call(_complex_to_variant(a), i, j));
 		else if (args_type == Variant::ARRAY)

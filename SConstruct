@@ -55,8 +55,7 @@ sources = Glob("src/*.cpp")
 
 DISABLE_GDBLAS_ODE = ARGUMENTS.get('DISABLE_GDBLAS_ODE', 0)
 if int(DISABLE_GDBLAS_ODE) == 0:
-    # Suppress depracated warning for std::iterator in boost::ublas
-    env.Append(CPPFLAGS=["-DGDBLAS_WITH_ODE", "-Wno-deprecated"])
+    env.Append(CPPFLAGS=["-DGDBLAS_WITH_ODE"])
     env.Append(CPPPATH=["boost/"])
 
 file = "{}{}{}".format(libname, env["suffix"], env["SHLIBSUFFIX"])
