@@ -14,6 +14,8 @@ void GDBlas::_bind_methods() {
 						 &GDBlas::new_complex_mat, DEFVAL(-1), DEFVAL(-1));
 	ClassDB::bind_method(D_METHOD("linspace", "p_start", "p_end", "p_count"), &GDBlas::linspace);
 	ClassDB::bind_method(D_METHOD("get_version"), &GDBlas::get_version);
+	ClassDB::bind_method(D_METHOD("mat_to_image_data", "p_mat_array", "p_channel_width"),
+						 &GDBlas::mat_to_image_data, DEFVAL(1));
 
 	GDBLAS_BIND_CONSTANT(GDBlasMat::ERR_GENERAL, ERR_GENERAL);
 	GDBLAS_BIND_CONSTANT(GDBlasMat::ERR_INVALID_DIM, ERR_INVALID_DIM);
@@ -26,6 +28,9 @@ void GDBlas::_bind_methods() {
 	GDBLAS_BIND_CONSTANT(GDBlasMat::NORM_1, NORM_1);
 	GDBLAS_BIND_CONSTANT(GDBlasMat::NORM_INF, NORM_INF);
 	GDBLAS_BIND_CONSTANT(GDBlasMat::NORM_FRO, NORM_FRO);
+	GDBLAS_BIND_CONSTANT(GDBlasMat::REAL_COMPONENT, REAL_COMPONENT);
+	GDBLAS_BIND_CONSTANT(GDBlasMat::IMAG_COMPONENT, IMAG_COMPONENT);
+	GDBLAS_BIND_CONSTANT(GDBlasMat::BOTH_COMPONENTS, BOTH_COMPONENTS);
 }
 
 GDBlas::GDBlas() {
@@ -96,7 +101,7 @@ Variant GDBlas::new_complex_mat(Variant p_rows, int p_cols = -1) {
 	if (error)
 		return Variant();
 
-	Ref< GDBlasMat > mat = GDBlasMat::new_mat(d.m, d.n, GDBlasMat::BLAS_COMPLEX_MATRIX, &error);
+	Ref<GDBlasMat> mat = GDBlasMat::new_mat(d.m, d.n, GDBlasMat::BLAS_COMPLEX_MATRIX, &error);
 
 	if (error)
 		return Variant();
@@ -112,6 +117,72 @@ Variant GDBlas::linspace(GDBlasMat::scalar_t p_start, GDBlasMat::scalar_t p_end,
 	}
 
 	return Variant(mat);
+}
+
+Variant GDBlas::mat_to_image_data(Array p_mat_array, int p_channel_width) {
+	if (p_channel_width < 1) {
+		GDBLAS_ERROR("Invalid channel width");
+
+		return Variant();
+	}
+
+	if (p_channel_width > 2) {
+		GDBLAS_ERROR("Channeld width must be less than or equalt to 2");
+
+		return Variant();
+	}
+
+	int64_t channel_count = p_mat_array.size();
+
+	PackedByteArray output;
+
+	GDBlasMat::Dimension d;
+	for (int64_t i = 0; i < channel_count; ++i) {
+		GDBlasMat *mat = GDBlasMat::_cast(p_mat_array[i]);
+		if (mat == nullptr) {
+			GDBLAS_ERROR("Array entries must be GDBlasMat type");
+
+			return Variant();
+		}
+
+		if (mat->get_type() != GDBlasMat::BLAS_MATRIX) {
+			GDBLAS_ERROR("All input matrices must be real valued");
+
+			return Variant();
+		}
+
+		GDBlasMat::Dimension di = mat->_size();
+
+		if ((d.m && d.m != di.m) || (d.n && d.n != di.n)) {
+			GDBLAS_ERROR("All input matrices must have the same dimension");
+
+			return Variant();
+		}
+
+		d.m = di.m;
+		d.n = di.n;
+		if (output.size() == 0) {
+			GDBlasMat::s_t total_size = d.m * d.n * channel_count * p_channel_width;
+			output.resize(total_size);
+		}
+
+		int error = 0;
+		if (p_channel_width == 1) {
+			error = mat->_pack_implementation<uint8_t>(output, GDBlasMat::REAL_COMPONENT,
+													   channel_count, i, false);
+		} else if (p_channel_width == 2) {
+			error = mat->_pack_implementation<uint16_t>(output, GDBlasMat::REAL_COMPONENT,
+														channel_count, i, false);
+		}
+
+		if (error) {
+			GDBLAS_ERROR("'mat_to_image_data' exits with code %d", error);
+
+			return Variant();
+		}
+	}
+
+	return output;
 }
 
 Variant GDBlas::get_version() {

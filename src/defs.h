@@ -5,7 +5,7 @@
 
 #define GDBLAS_SET_VERSION(a, b, c) (a << 16 | b << 8 | c)
 
-static constexpr uint32_t GDBLAS_VERSION = GDBLAS_SET_VERSION(1, 2, 0);
+static constexpr uint32_t GDBLAS_VERSION = GDBLAS_SET_VERSION(1, 3, 0);
 
 #ifdef GDBLAS_DEBUG_PRINT
 

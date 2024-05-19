@@ -122,7 +122,7 @@ jobs:
         id: download
         uses: actions/download-artifact@v3
       - name: Copy extension into demo
-        run: cp -fr "${{ github.event.repository.name }}/${{ github.event.repository.name }}" demo/addons
+        run: cp -fr "${{ github.event.repository.name }}/${{ github.event.repository.name }}" demo/addons && cp -rf demo/addons demo3d/
       - name: Archive Release
         uses: thedoctor0/zip-release@0.7.1
         with:
@@ -135,11 +135,17 @@ jobs:
           type: 'zip'
           filename: 'demo.zip'
           path: 'demo'
+      - name: Demo3D release
+        uses: thedoctor0/zip-release@0.7.1
+        with:
+          type: 'zip'
+          filename: 'demo3d.zip'
+          path: 'demo3d'
       - name: Create and upload asset
         uses: ncipollo/release-action@v1
         with:
           allowUpdates: true
-          artifacts: "${{ github.event.repository.name }}/${{ github.event.repository.name }}.zip,demo.zip"
+          artifacts: "${{ github.event.repository.name }}/${{ github.event.repository.name }}.zip,demo.zip,demo3d.zip"
           omitNameDuringUpdate: true
           omitBodyDuringUpdate: true
           token: ${{ secrets.GITHUB_TOKEN }}

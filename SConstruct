@@ -55,6 +55,7 @@ sources = Glob("src/*.cpp")
 
 DISABLE_GDBLAS_ODE = ARGUMENTS.get('DISABLE_GDBLAS_ODE', 0)
 if int(DISABLE_GDBLAS_ODE) == 0:
+    # Suppress depracated warning for std::iterator in boost::ublas
     env.Append(CPPFLAGS=["-DGDBLAS_WITH_ODE"])
     env.Append(CPPPATH=["boost/"])
 
@@ -70,7 +71,16 @@ library = env.SharedLibrary(
     source=sources,
 )
 
-default_args = [library]
+copy_commands = []
+for fn in [ "README.md", "LICENSE.md", "NOTICE.md" ]:
+    copy_commands += [Command(f"demo/addons/gdblas/{fn}", fn, Copy("$TARGET", "$SOURCE"))]
+    if len(copy_commands) > 1:
+        Requires(copy_commands[-1], copy_commands[-2])
+clone_addon = env.Install("demo3d/addons", "demo/addons/gdblas")
+Requires(clone_addon, copy_commands[-1])
+AlwaysBuild(clone_addon)
+
+default_args = [library] + copy_commands + [clone_addon]
 if localEnv.get("compiledb", False):
     default_args += [compilation_db]
 Default(*default_args)

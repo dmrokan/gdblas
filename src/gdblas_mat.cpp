@@ -7,11 +7,12 @@ void boost::throw_exception(std::exception const & e) {}
 void boost::throw_exception(std::exception const & e, boost::source_location const & loc) {}
 #endif
 
-
 using namespace godot;
 
+typedef GDBlasMat::scalar_t scalar_t;
+
 void GDBlasMat::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("resize", "p_rows", "p_cols"), &GDBlasMat::resize);
+	ClassDB::bind_method(D_METHOD("resize", "p_variant", "p_cols"), &GDBlasMat::resize, DEFVAL(-1));
 	ClassDB::bind_method(D_METHOD("copy"), &GDBlasMat::copy);
 	ClassDB::bind_method(D_METHOD("dimension"), &GDBlasMat::size);
 	ClassDB::bind_method(D_METHOD("get", "p_i", "p_j", "p_m", "p_n"),
@@ -70,6 +71,11 @@ void GDBlasMat::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("f", "p_func", "p_args", "p_indexed"),
 						 &GDBlasMat::unary_func, DEFVAL(Variant()), DEFVAL(false));
 	ClassDB::bind_method(D_METHOD("conv", "p_other", "p_same"), &GDBlasMat::conv, DEFVAL(false));
+	ClassDB::bind_method(D_METHOD("pack", "p_component"), &GDBlasMat::pack, DEFVAL(BOTH_COMPONENTS));
+	ClassDB::bind_method(D_METHOD("unpack", "p_packed_data", "p_component", "p_step", "p_offset"),
+						 &GDBlasMat::unpack, DEFVAL(BOTH_COMPONENTS), DEFVAL(1), DEFVAL(0));
+	ClassDB::bind_method(D_METHOD("downsample", "p_factor_m", "p_factor_n", "p_filter"),
+						 &GDBlasMat::downsample, DEFVAL(Variant()));
 
 #ifdef GDBLAS_WITH_ODE
 	ClassDB::bind_method(D_METHOD("eval_ode", "p_f", "p_dt", "p_max_step"), &GDBlasMat::eval_ode,
@@ -77,7 +83,19 @@ void GDBlasMat::_bind_methods() {
 #endif
 }
 
-Variant GDBlasMat::resize(int m, int n) {
+Variant GDBlasMat::resize(Variant p_m, int n) {
+	int m = 0;
+	int type = p_m.get_type();
+	if (type == Variant::INT) {
+		m = p_m;
+	} else if (type == Variant::VECTOR2I) {
+		Vector2i size = p_m;
+		m = size.x;
+		n = size.y;
+	} else {
+		return ERR_INVALID_INPUT;
+	}
+
 	if (m <= 0 || n <= 0) {
 		GDBLAS_ERROR("(%dx%d) is not a valid matrix dimension", m, n);
 
@@ -754,7 +772,7 @@ Variant GDBlasMat::from_array(Array p_array) {
 		}
 
 		if (n && !resized) {
-			resize(m, n);
+			resize((int)m, (int)n);
 			resized = true;
 		}
 
@@ -1204,6 +1222,102 @@ Variant GDBlasMat::conv(Variant p_other, bool p_same) {
 	return Variant(mat);
 }
 
+Variant GDBlasMat::pack(int p_component) {
+	if (_is_zero_dim()) {
+		GDBLAS_ERROR("Matrix is dimensionless");
+
+		return Variant();
+	}
+
+	PackedFloat64Array packed_data;
+
+	int error = _pack_implementation(packed_data, p_component, 1);
+
+	return packed_data;
+}
+
+Variant GDBlasMat::unpack(Variant p_packed_data, int p_component, int p_step, int p_offset) {
+	if (_is_zero_dim()) {
+		GDBLAS_ERROR("Matrix is dimensionless");
+
+		return ERR_INVALID_DIM;
+	}
+
+	int64_t packed_size = 0;
+
+	Variant::Type packed_type = p_packed_data.get_type();
+	if (packed_type == Variant::PACKED_BYTE_ARRAY) {
+		packed_size = ((PackedByteArray)p_packed_data).size();
+	} else if (packed_type == Variant::PACKED_FLOAT32_ARRAY) {
+		packed_size = ((PackedFloat32Array)p_packed_data).size();
+	} else if (packed_type == Variant::PACKED_FLOAT64_ARRAY) {
+		packed_size = ((PackedByteArray)p_packed_data).size();
+	} else {
+		GDBLAS_ERROR("Packed data type must be BYTE, FLOAT32 or FLOAT64 array");
+
+		return ERR_INVALID_INPUT;
+	}
+
+	if (p_step < 1 || packed_size % p_step != 0) {
+		GDBLAS_ERROR("Step size must be a positive integer divisor of input array size");
+
+		return ERR_INVALID_INPUT;
+	}
+
+	packed_size /= p_step;
+
+	int type = get_type();
+	Dimension d = _size();
+	if (type == BLAS_MATRIX && d.m * d.n != packed_size) {
+		GDBLAS_ERROR("Can not unpack %ld values into a matrix of size (%ux%u)", packed_size, d.m, d.n);
+
+		return ERR_INVALID_DIM;
+	} else if (type == BLAS_COMPLEX_MATRIX && p_component == BOTH_COMPONENTS
+			   && 2 * d.m * d.n != packed_size) {
+		GDBLAS_ERROR("Can not unpack %ld values into a complex matrix of size (%ux%u)",
+					 packed_size, d.m, d.n);
+
+		return ERR_INVALID_DIM;
+	}
+
+	if (packed_type == Variant::PACKED_FLOAT64_ARRAY) {
+		PackedFloat64Array packed_data = p_packed_data;
+		return _unpack_implementation(packed_data, p_component, p_step);
+	} else if (packed_type == Variant::PACKED_FLOAT32_ARRAY) {
+		if (type == BLAS_COMPLEX_MATRIX && p_component == BOTH_COMPONENTS) {
+			GDBLAS_ERROR("Can not unpack FLOAT32 array into complex matrix");
+
+			return ERR_INVALID_INPUT;
+		}
+		PackedFloat32Array packed_data = p_packed_data;
+		return _unpack_implementation<float>(packed_data, p_component, p_step);
+	} else if (packed_type == Variant::PACKED_BYTE_ARRAY) {
+		if (type == BLAS_COMPLEX_MATRIX && p_component == BOTH_COMPONENTS) {
+			GDBLAS_ERROR("Can not unpack BYTE array into complex matrix");
+
+			return ERR_INVALID_INPUT;
+		}
+		PackedByteArray packed_data = p_packed_data;
+		return _unpack_implementation<uint8_t>(packed_data, p_component, p_step, p_offset);
+	}
+
+	return ERR_INVALID_INPUT;
+}
+
+Variant GDBlasMat::downsample(int p_factor_m, int p_factor_n, Variant p_filter) {
+	if (p_factor_m < 1 || p_factor_n < 1) {
+		GDBLAS_ERROR("Downsampling factor must be a positive integer");
+
+		return Variant();
+	}
+
+	GDBlasMat *filter = _cast(p_filter);
+
+	Ref<GDBlasMat> output = _downsample_implementation(p_factor_m, p_factor_n, filter);
+
+	return Variant(output);
+}
+
 #ifdef GDBLAS_WITH_ODE
 Variant GDBlasMat::eval_ode(Callable p_f, double p_dt, double p_max_step) {
 	typedef std::vector<scalar_t> state_type;
@@ -1270,3 +1384,393 @@ Variant GDBlasMat::eval_ode(Callable p_f, double p_dt, double p_max_step) {
 	return result;
 }
 #endif
+
+/********************* Implementations ********************/
+
+void GDBlasMat::_resize_implementation(s_t m, s_t n) {
+	if (get_type() == BLAS_MATRIX) {
+		ctx()->resize<Context::RealMatrixData>(m, n);
+		ctx()->clear<Context::RealMatrixData>();
+	} else if (get_type() == BLAS_COMPLEX_MATRIX) {
+		ctx()->resize<Context::ComplexMatrixData>(m, n);
+		ctx()->clear<Context::ComplexMatrixData>();
+	}
+}
+
+int GDBlasMat::_add_implementation(GDBlasMat *other) {
+	if (get_type() == BLAS_MATRIX && other->get_type() == BLAS_MATRIX) {
+		ctx()->add<Context::RealMatrixData, Context::RealMatrixData>(other->ctx());
+	} else if (get_type() == BLAS_COMPLEX_MATRIX && other->get_type() == BLAS_MATRIX) {
+		ctx()->add<Context::ComplexMatrixData, Context::RealMatrixData>(other->ctx());
+	} else if (get_type() == BLAS_COMPLEX_MATRIX && other->get_type() == BLAS_COMPLEX_MATRIX) {
+		ctx()->add<Context::ComplexMatrixData, Context::ComplexMatrixData>(other->ctx());
+	} else {
+		return ERR_INVALID_TYPE;
+	}
+
+	return 0;
+}
+
+int GDBlasMat::_sub_implementation(GDBlasMat *other) {
+	if (get_type() == BLAS_MATRIX && other->get_type() == BLAS_MATRIX) {
+		ctx()->sub<Context::RealMatrixData, Context::RealMatrixData>(other->ctx());
+	} else if (get_type() == BLAS_COMPLEX_MATRIX && other->get_type() == BLAS_MATRIX) {
+		ctx()->sub<Context::ComplexMatrixData, Context::RealMatrixData>(other->ctx());
+	} else if (get_type() == BLAS_COMPLEX_MATRIX && other->get_type() == BLAS_COMPLEX_MATRIX) {
+		ctx()->sub<Context::ComplexMatrixData, Context::ComplexMatrixData>(other->ctx());
+	} else {
+		return ERR_INVALID_TYPE;
+	}
+
+	return 0;
+}
+
+void GDBlasMat::_transpose_implementation() {
+	if (get_type() == BLAS_MATRIX) {
+		ctx()->transpose<Context::RealMatrixData>();
+	} else if (get_type() == BLAS_COMPLEX_MATRIX) {
+		ctx()->transpose<Context::ComplexMatrixData>();
+	}
+}
+
+void GDBlasMat::_hermitian_implementation() {
+	if (get_type() == BLAS_MATRIX) {
+		ctx()->transpose<Context::RealMatrixData>();
+	} else if (get_type() == BLAS_COMPLEX_MATRIX) {
+		_conj_implementation();
+		ctx()->transpose<Context::ComplexMatrixData>();
+	}
+}
+
+int GDBlasMat::_eq_implementation(GDBlasMat *other) {
+	if (get_type() == BLAS_MATRIX && other->get_type() == BLAS_MATRIX) {
+		ctx()->eq<Context::RealMatrixData, Context::RealMatrixData>(other->ctx());
+	} else if (get_type() == BLAS_COMPLEX_MATRIX && other->get_type() == BLAS_COMPLEX_MATRIX) {
+		ctx()->eq<Context::ComplexMatrixData, Context::ComplexMatrixData>(other->ctx());
+	} else if (get_type() == BLAS_COMPLEX_MATRIX && other->get_type() == BLAS_MATRIX) {
+		ctx()->eq<Context::ComplexMatrixData, Context::RealMatrixData>(other->ctx());
+	} else {
+		return ERR_INVALID_TYPE;
+	}
+
+	return 0;
+}
+
+bool GDBlasMat::_is_eq_implementation(GDBlasMat *other, scalar_t eps, int norm_type) {
+	bool result = false;
+
+	if (get_type() == BLAS_MATRIX && other->get_type() == BLAS_MATRIX) {
+		result = ctx()->is_eq<Context::RealMatrixData, Context::RealMatrixData>(other->ctx(),
+				eps, norm_type);
+	} else if (get_type() == BLAS_COMPLEX_MATRIX && other->get_type() == BLAS_COMPLEX_MATRIX) {
+		result = ctx()->is_eq<Context::ComplexMatrixData, Context::ComplexMatrixData>(other->ctx(),
+				eps, norm_type);
+	} else if (get_type() == BLAS_COMPLEX_MATRIX && other->get_type() == BLAS_MATRIX) {
+		result = ctx()->is_eq<Context::ComplexMatrixData, Context::RealMatrixData>(other->ctx(),
+				eps, norm_type);
+	} else if (get_type() == BLAS_MATRIX && other->get_type() == BLAS_COMPLEX_MATRIX) {
+		result = other->ctx()->is_eq<Context::ComplexMatrixData, Context::RealMatrixData>(ctx(),
+				eps, norm_type);
+	}
+
+	return result;
+}
+
+int GDBlasMat::_muls_implementation(scalar_t s) {
+	if (get_type() == BLAS_MATRIX) {
+		ctx()->muls<Context::RealMatrixData, scalar_t>(s);
+	} else if (get_type() == BLAS_COMPLEX_MATRIX) {
+		ctx()->muls<Context::ComplexMatrixData, scalar_t>(s);
+	} else {
+		return ERR_INVALID_TYPE;
+	}
+
+	return 0;
+}
+
+int GDBlasMat::_muls_implementation(complex_t s) {
+	if (get_type() == BLAS_COMPLEX_MATRIX) {
+		ctx()->muls<Context::ComplexMatrixData, complex_t>(s);
+	} else {
+		return ERR_INVALID_TYPE;
+	}
+
+	return 0;
+}
+
+Ref<GDBlasMat> GDBlasMat::_copy_implementation(int *error) {
+	Dimension d = _size();
+
+	Ref<GDBlasMat> mat = GDBlasMat::new_mat(d.m, d.n, get_type(), error);
+
+	mat->_eq_implementation(this);
+
+	return mat;
+}
+
+int GDBlasMat::_fill_implementation(scalar_t s, bool diag) {
+	if (get_type() == BLAS_MATRIX) {
+		if (s == 0.0 && !diag)
+			ctx()->clear<Context::RealMatrixData>();
+		else
+			ctx()->fill<Context::RealMatrixData, scalar_t>(s, diag);
+	} else if (get_type() == BLAS_COMPLEX_MATRIX) {
+		if (s == 0.0 && !diag) {
+			ctx()->clear<Context::ComplexMatrixData>();
+		} else {
+			complex_t c;
+			c.real(s);
+
+			ctx()->fill<Context::ComplexMatrixData, complex_t>(c, diag);
+		}
+	} else {
+		return ERR_INVALID_TYPE;
+	}
+
+	return 0;
+}
+
+int GDBlasMat::_fill_implementation(complex_t &s, bool diag) {
+	if (get_type() == BLAS_COMPLEX_MATRIX) {
+		ctx()->fill<Context::ComplexMatrixData, complex_t>(s, diag);
+	} else {
+		return ERR_INVALID_TYPE;
+	}
+
+	return 0;
+}
+
+void GDBlasMat::_conj_implementation() {
+	if (get_type() == BLAS_COMPLEX_MATRIX) {
+		auto lconj = [](complex_t &a) { return std::conj(a); };
+		ctx()->get_complex_mdata()->elementwise_func(lconj);
+	}
+}
+
+Ref<GDBlasMat> GDBlasMat::_real_implementation(int *error) {
+	Dimension d = _size();
+
+	Ref<GDBlasMat> mat = new_mat(d.m, d.n, BLAS_MATRIX, error);
+	if (*error)
+		return mat;
+
+	int type = get_type();
+	if (type == BLAS_COMPLEX_MATRIX)
+		ctx()->set_real_or_imag(mat->ctx(), true, true);
+	else if (type == BLAS_MATRIX)
+		mat->ctx()->eq<Context::RealMatrixData, Context::RealMatrixData>(ctx());
+
+	return mat;
+}
+
+int GDBlasMat::_set_real_implementation(GDBlasMat *other) {
+	int type1 = get_type();
+	int type2 = other->get_type();
+
+	if (type1 == BLAS_COMPLEX_MATRIX && type2 == BLAS_MATRIX) {
+		ctx()->set_real_or_imag(other->ctx(), true, false);
+	} else if (type1 == BLAS_MATRIX && type2 == BLAS_MATRIX) {
+		ctx()->eq<Context::RealMatrixData, Context::RealMatrixData>(other->ctx());
+	} else {
+		return ERR_INVALID_TYPE;
+	}
+
+	return 0;
+}
+
+Ref<GDBlasMat> GDBlasMat::_imag_implementation(int *error) {
+	Dimension d = _size();
+
+	Ref<GDBlasMat> mat = new_mat(d.m, d.n, BLAS_MATRIX, error);
+	if (*error)
+		return mat;
+
+	if (get_type() == BLAS_COMPLEX_MATRIX)
+		ctx()->set_real_or_imag(mat->ctx(), false, true);
+	else
+		*error = ERR_INVALID_TYPE;
+
+	*error = 0;
+
+	return mat;
+}
+
+int GDBlasMat::_set_imag_implementation(GDBlasMat *other) {
+	if (get_type() == BLAS_COMPLEX_MATRIX && other->get_type() == BLAS_MATRIX) {
+		ctx()->set_real_or_imag(other->ctx(), false, false);
+	} else {
+		return ERR_INVALID_TYPE;
+	}
+
+	return 0;
+}
+
+Ref<GDBlasMat> GDBlasMat::_prod_implementation(GDBlasMat *other, int *error) {
+	Dimension d1 = _size();
+	Dimension d2 = other->_size();
+
+	int type = get_type();
+	if (other->get_type() == BLAS_COMPLEX_MATRIX) {
+		type = BLAS_COMPLEX_MATRIX;
+	}
+
+	Ref<GDBlasMat> mat = new_mat(d1.m, d2.n, type, error);
+	if (*error)
+		return mat;
+
+	mat->ctx()->prod(this->ctx(), other->ctx());
+
+	return mat;
+}
+
+Ref<GDBlasMat> GDBlasMat::_inv_implementation(int *error) {
+	Dimension d = _size();
+
+	Ref<GDBlasMat> mat = new_mat(d.m, d.n, get_type(), error);
+	if (*error)
+		return mat;
+
+	*error = ctx()->inv(mat->ctx());
+
+	return mat;
+}
+
+Ref<GDBlasMat> GDBlasMat::_integrate_implementation(int axis, int *error) {
+	Ref<GDBlasMat> mat = new_mat(1, 1, get_type(), error);
+	if (*error)
+		return nullptr;
+
+	*error = ctx()->integrate(mat->ctx(), axis);
+
+	return mat;
+}
+
+Ref<GDBlasMat> GDBlasMat::_mean_implementation(int axis, int *error) {
+	Ref<GDBlasMat> mat = new_mat(1, 1, get_type(), error);
+	if (*error)
+		return nullptr;
+
+	*error = ctx()->mean(mat->ctx(), axis);
+
+	return mat;
+}
+
+Ref<GDBlasMat> GDBlasMat::_min_max_implementation(int axis, int *error, bool is_min) {
+	if (get_type() == BLAS_COMPLEX_MATRIX) {
+		*error = ERR_INVALID_TYPE;
+
+		return nullptr;
+	}
+
+	Ref<GDBlasMat> mat = new_mat(1, 1, get_type(), error);
+	if (*error)
+		return nullptr;
+
+	*error = ctx()->min_max(mat->ctx(), is_min, axis);
+
+	return mat;
+}
+
+Array GDBlasMat::_arg_min_max_implementation(int axis, int *error, bool is_min) {
+	std::vector<index_t> arg{ INVALID_INDEX };
+
+	if (get_type() == BLAS_MATRIX) {
+		*error = ctx()->arg_min_max(arg, is_min, axis);
+	} else {
+		GDBLAS_ERROR("Invalid type");
+
+		*error = ERR_INVALID_TYPE;
+	}
+
+	Array result;
+	result.resize(arg.size());
+	s_t i = 0;
+	for (auto iter = arg.begin(); iter != arg.end(); ++iter) {
+		result[i++] = Vector2i((*iter)[0], (*iter)[1]);
+	}
+
+	return result;
+}
+
+scalar_t GDBlasMat::_norm_implementation(int norm_type, int *error) {
+	scalar_t l = ctx()->norm(norm_type, error);
+
+	return l;
+}
+
+Ref<GDBlasMat> GDBlasMat::_conv_implementation(GDBlasMat *other, bool same, int *error) {
+	Dimension d1 = _size();
+	Dimension d2 = other->_size();
+	Dimension d3;
+	*error = 0;
+
+	if (same) {
+		d3.m = d1.m;
+		d3.n = d1.n;
+	} else {
+		d3.m = d1.m + d2.m - 1;
+		d3.n = d1.n + d2.n - 1;
+	}
+
+	int type1 = get_type();
+	int type2 = get_type();
+	int type3 = type1;
+	if (type3 == BLAS_MATRIX)
+		type3 = type2;
+
+	Ref<GDBlasMat> mat = new_mat(d3.m, d3.n, type3, error);
+	if (*error)
+		return nullptr;
+
+	*error = mat->ctx()->conv(ctx(), other->ctx(), same);
+
+	return mat;
+}
+
+Ref<GDBlasMat> GDBlasMat::_downsample_implementation(int factor_m, int factor_n, GDBlasMat *filter) {
+	int error = 0;
+	Dimension d = _size();
+	s_t m = d.m / (s_t)factor_m;
+	s_t n = d.n / (s_t)factor_n;
+	Ref<GDBlasMat> input = this;
+
+	if (filter == nullptr && factor_m == 1 && factor_n == 1) {
+		Ref<GDBlasMat> output = _copy_implementation(&error);
+		if (error)
+			return nullptr;
+		else
+			return output;
+	}
+
+	Ref<GDBlasMat> mat = new_mat(m, n, get_type(), &error);
+	if (error)
+		return nullptr;
+
+	if (filter != nullptr) {
+		int type1 = get_type();
+		int type2 = filter->get_type();
+		if (type2 == BLAS_COMPLEX_MATRIX && type1 != BLAS_COMPLEX_MATRIX) {
+			GDBLAS_ERROR("Can not filter real matrix with complex filter coefficients");
+
+			return nullptr;
+		}
+
+		input = _conv_implementation(filter, true, &error);
+		if (error)
+			return nullptr;
+	}
+
+	if (factor_m == 1 && factor_n == 1) {
+		Ref<GDBlasMat> output = _copy_implementation(&error);
+		if (error)
+			return nullptr;
+		else
+			return output;
+	}
+
+	error = input->ctx()->downsample(mat->ctx(), factor_m, factor_n);
+	if (error)
+		return nullptr;
+
+	return mat;
+}

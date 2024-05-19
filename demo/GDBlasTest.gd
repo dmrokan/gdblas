@@ -116,6 +116,7 @@ func new_mat(m: int, n: int, val = 0, real: bool = true) -> Array:
 func _ready():
 	test01()
 	test02()
+	test02_1()
 	test03()
 	test04()
 	test05()
@@ -130,6 +131,13 @@ func _ready():
 	test14()
 	test15()
 	test16()
+	test17()
+	test18()
+	test19()
+	test20()
+	test21()
+	test22()
+	test23()
 
 func test01():
 	print("test01")
@@ -252,6 +260,33 @@ func test02():
 	assert(not mat3.mul(4))
 	assert(not mat3.div(Vector2(2, 0)))
 	assert(cmp_mat(mat2.to_array(), mat3.to_array()))
+
+func _test02_1_set_mat(a, i: int, j: int):
+	return i + j + 1
+
+func test02_1():
+	print("test02_1")
+
+	var gbl = GDBlas.new()
+	var A = gbl.new_mat(6)
+	var A11 = gbl.new_mat(4, 2)
+	A.fill(-1)
+	A11.f(_test02_1_set_mat, null, true)
+	A.set(A11, 1, 1)
+	var A11_cmp = A.get(1, 1, 4, 2)
+	assert(A11.is_eq(A11_cmp))
+
+	var B = gbl.new_complex_mat(6)
+	B.fill(-1)
+	B.set(A11, 1, 1)
+	var B11_cmp = B.get(1, 1, 4, 2)
+	assert(A11.is_eq(B11_cmp))
+	var B11 = gbl.new_complex_mat(3, 3)
+	B11.fill(Vector2(10, 20))
+	assert(B.set(B11, 4, 4) != 0)
+	B.set(B11, 3, 3)
+	B11_cmp = B.get(3, 3, 3, 3)
+	assert(B11.is_eq(B11_cmp))
 
 func test03():
 	print("test03")
@@ -798,7 +833,191 @@ func test16():
 		[13552, 24937, 30392]
 	]))
 
+func test17():
+	print("test17")
+
+	var gbl = GDBlas.new()
+	var A = gbl.new_mat(3, 2)
+	A.from_array([
+		[ 1, 2 ],
+		[ 3, 4 ],
+		[ 5, 6 ]
+	])
+	var packA: PackedFloat64Array = A.pack()
+	var A2 = gbl.new_mat(A.dimension())
+	A2.unpack(packA)
+	assert(A.is_eq(A2))
+
+	var B = gbl.new_complex_mat(3, 2)
+	B.real(A)
+	B.imag(A)
+	B.H()
+	var packB: PackedFloat64Array = B.pack()
+	assert(packB == PackedFloat64Array([1, -1, 3, -3, 5, -5, 2, -2, 4, -4, 6, -6]))
+	var packBre: PackedFloat64Array = B.pack(GDBlas.REAL_COMPONENT)
+	assert(packBre == PackedFloat64Array([1, 3, 5, 2, 4, 6]))
+	var packBim: PackedFloat64Array = B.pack(GDBlas.IMAG_COMPONENT)
+	assert(packBim == PackedFloat64Array([-1, -3, -5, -2, -4, -6]))
+
+	var B2 = gbl.new_complex_mat(B.dimension())
+	B2.unpack(packB)
+	assert(B.is_eq(B2))
+	var B2re = gbl.new_mat(B.dimension())
+	B2re.unpack(packBre)
+	assert(B.real().is_eq(B2re))
+	var B2im = gbl.new_mat(B.dimension())
+	B2im.unpack(packBim)
+	assert(B.imag().is_eq(B2im))
+	B2.fill(0)
+	B2.unpack(packBre, GDBlas.REAL_COMPONENT)
+	B2.unpack(packBre, GDBlas.IMAG_COMPONENT)
+	B2.T()
+	B.H()
+	assert(B.is_eq(B2))
+
+func test18():
+	print("test18")
+
+	var gbl = GDBlas.new()
+	var A = gbl.new_mat(3, 2)
+	A.from_array([
+		[ 1, 2 ],
+		[ 3, 4 ],
+		[ 5, 6 ]
+	])
+	var packA: PackedFloat32Array = PackedFloat32Array(Array(range(1, 7)))
+	var A2 = gbl.new_mat(A.dimension())
+	A2.unpack(packA)
+	assert(A2.is_eq(A))
+
+func test19():
+	print("test19")
+
+	var gbl = GDBlas.new()
+	var A = gbl.new_mat(3, 2)
+	A.from_array([
+		[ 1, 2 ],
+		[ 3, 4 ],
+		[ 5, 6 ]
+	])
+	var packA: PackedByteArray = PackedByteArray(Array(range(1, 7)))
+	var A2 = gbl.new_mat(A.dimension())
+	A2.unpack(packA)
+	assert(A2.is_eq(A))
+
+func test20():
+	print("test20")
+
+	var gbl = GDBlas.new()
+	var A = gbl.new_mat(3, 2)
+	A.from_array([
+		[ 1, 2 ],
+		[ 3, 4 ],
+		[ 5, 6 ]
+	])
+	var packA: PackedByteArray = [ 1, -1, 2, -2, 3, -3, 4, -4, 5, -5, 6, -6 ]
+	var A2 = gbl.new_mat(A.dimension())
+	A2.unpack(packA, GDBlas.REAL_COMPONENT, 2)
+	assert(A2.is_eq(A))
+
+func _test21_set_mat(a: float, i: int, j: int):
+	return i + j + a + 1;
+
+func test21():
+	print("test21")
+	const dim = Vector2i(3, 5)
+	var gbl = GDBlas.new()
+	var R = gbl.new_mat(dim)
+	R.f(_test21_set_mat, null, true)
+	var G = gbl.new_mat(dim)
+	G.f(_test21_set_mat, null, true)
+	G.f(_test21_set_mat, null, true)
+	var B = gbl.new_mat(dim)
+	B.f(_test21_set_mat, null, true)
+	B.f(_test21_set_mat, null, true)
+	B.f(_test21_set_mat, null, true)
+
+	var pack: PackedByteArray = gbl.mat_to_image_data([ R, G, B ])
+
+	var Ra = R.to_array()
+	var Ga = G.to_array()
+	var Ba = B.to_array()
+	var pack2: PackedByteArray = PackedByteArray()
+	for i in range(len(Ra)):
+		for j in range(len(Ra[0])):
+			var r = Ra[i][j]
+			var g = Ga[i][j]
+			var b = Ba[i][j]
+			pack2.append(r)
+			pack2.append(g)
+			pack2.append(b)
+
+	assert(pack == pack2)
+
+func _test22_set_mat(a, args: Array, i: int, j: int):
+	if args[0] or (i % 3 == 0 and j % 2 == 0):
+		if args[1]:
+			return Vector2(2, -2)
+		else:
+			return 2
+
+	if args[1]:
+		return Vector2(3, -3)
+	else:
+		return 2
+
+func test22():
+	print("test22")
+
+	var gbl = GDBlas.new()
+	var size = Vector2i(72, 50)
+	var A = gbl.new_mat(size)
+	A.f(_test22_set_mat, [ false, false ], true)
+	var Ad = A.downsample(3, 2)
+	var Ad2 = gbl.new_mat(Ad.dimension())
+	Ad2.f(_test22_set_mat, [ true, false ], true)
+	assert(Ad.is_eq(Ad2))
+
+	var B = gbl.new_complex_mat(size)
+	B.f(_test22_set_mat, [ false, true ], true)
+	var Bd = B.downsample(3, 2)
+	var Bd2 = gbl.new_complex_mat(Bd.dimension())
+	Bd2.f(_test22_set_mat, [ true, true ], true)
+	assert(Bd.is_eq(Bd2))
+
+	var C = gbl.new_complex_mat(11, 13)
+	var Cd = C.downsample(3, 2)
+	assert(Cd.dimension() == Vector2i(3, 6))
+
+func test23():
+	print("test23")
+
+	var gbl = GDBlas.new()
+	var A = gbl.new_mat(6)
+	A.fill(1)
+	var filter = gbl.new_mat()
+	filter.from_array([
+		[ 0, 1, 0 ],
+		[ 1, 1, 1],
+		[ 0, 1, 0],
+	])
+	filter.div(filter.integrate())
+
+	var Ad = A.downsample(2, 2, filter)
+	assert(cmp_mat(Ad.to_array(), [[0.6, 0.8, 0.8], [0.8, 1, 1], [0.8, 1, 1]]))
+
+	var B = gbl.new_complex_mat(6)
+	B.real(A)
+	B.imag(A)
+	B.H()
+	var Bd = B.downsample(2, 2, filter)
+	var Bdr = Bd.real()
+	var Bdi = Bd.imag()
+	Bdi.mul(-1)
+	assert(cmp_mat(Bdr.to_array(), [[0.6, 0.8, 0.8], [0.8, 1, 1], [0.8, 1, 1]]))
+	assert(cmp_mat(Bdi.to_array(), [[0.6, 0.8, 0.8], [0.8, 1, 1], [0.8, 1, 1]]))
+
+
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta):
 	pass
-

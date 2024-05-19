@@ -1,5 +1,51 @@
 extends Node2D
 
+""" Summary
+	-------
+This node simulates the displacement of points flexible structure
+defined by the parameters below. Continuous time version of
+the model can be written as
+dx/dt = Ax(t)+Bu(t)      	(1)
+y(t) = Cx(t)				(2)
+u: input (scalar)
+y: output (vector)
+x: state vector
+
+When an impulse is applied to the flexible structure, it starts
+to vibrate meaning that the points on the structure starts to oscillate.
+Some frequencies are dominant in this oscillatory behavior. These dominant
+frequencies are called natural modes of the system and depends on the
+system parameters.
+
+These natural modes are embedded in the state matrix A. One of the modes can be
+represented as
+A_i = [
+	[  0,     om_i ],
+	[ -om_i, -2*zeta_i*om_i ]
+]
+om_i: frequency in radians
+zeta_i: damping cofficient of the natural mode
+
+If zeta is larger, oscillatory behavior vanishes more quickly.
+
+The state matrix A, is block diagonal composition of N modes.
+A = diag{ A_1, A_2, ... A_N } which is an 2Nx2N matrix.
+Each mode is excited by input u(t), which leads to the 1st equation above.
+
+The amount of displacement of equidistant points on the structure is a
+linear combination of natural modes. It is represented by 2nd equation.
+
+The system is discretized in time to iteratively calculate y(t)
+in `_process` function. The discrete time version can be written as
+x[n+1] = Ax[n]+Bu[n], y[n] = Cx[n]
+The system is discretized by using zero order hold method.
+
+The system matrices are generated once when `_ready` function is called.
+The calculation steps are given in `_generate_system_matrices`.
+Simulation steps are evaluated in `_process` function.
+Oscillations are plotted in `_draw` function.
+"""
+
 const Lb: float = 20 # Beam length
 const Eb: float = 1.0 # Young modulus
 const Ib: float = 1.0 # Inertia
@@ -79,15 +125,16 @@ func _generate_initial_state(gbl):
 	sysx = gbl.new_mat(2 * Nb, 1)
 
 func _generate_system_matrices():
+
 	var gbl = GDBlas.new()
-	var Acont = gbl.new_mat(2 * Nb)
-	var A = gbl.new_mat(2 * Nb)
-	var C = gbl.new_mat(Nb, 2 * Nb)
-	var B = gbl.new_mat(2 * Nb, 1)
+	var Acont = gbl.new_mat(2 * Nb) # Continuous time state matrix
+	var A = gbl.new_mat(2 * Nb) # Discrete time state matrix
+	var C = gbl.new_mat(Nb, 2 * Nb) # Output matrix is not effected by discretization
+	var B = gbl.new_mat(2 * Nb, 1) # Continuous time input matrix
 	for i in range(1, Nb + 1):
 		var om_i = _resonance_freq(i)
 		var Ai_list = _generate_system_matrix_block(gbl, om_i, zeta)
-		A.set(Ai_list[0].real(), 2 * (i - 1), 2 * (i - 1))
+		A.set(Ai_list[0].real(), 2 * (i - 1), 2 * (i - 1)) # Set diagonal blocks
 		Acont.set(Ai_list[1], 2 * (i - 1), 2 * (i - 1))
 
 		for j in range(1, Nb + 1):
@@ -101,7 +148,7 @@ func _generate_system_matrices():
 
 	sysA = A
 	sysC = C
-	sysB = I.prod(Acont.inv()).prod(B)
+	sysB = I.prod(Acont.inv()).prod(B) # Discrete time output matrix
 	sysu = gbl.new_mat(1)
 
 	_generate_initial_state(gbl)
@@ -128,13 +175,6 @@ func _cubic_bezier(p0: Vector2, p1: Vector2, p2: Vector2, p3: Vector2, t: float)
 
 	var s = r0.lerp(r1, t)
 	return s
-
-func _quadratic_bezier(p0: Vector2, p1: Vector2, p2: Vector2, t: float):
-	var q0 = p0.lerp(p1, t)
-	var q1 = p1.lerp(p2, t)
-
-	var r = q0.lerp(q1, t)
-	return r
 
 func _create_segment(curve: Curve2D, q0: Vector2, q1: Vector2, n: int = 5):
 	var t = 0;

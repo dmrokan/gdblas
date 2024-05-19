@@ -1,5 +1,11 @@
 # GDBlas
-This native [Godot](https://github.com/godotengine/godot) extension provides real and complex matrix algebra. It uses data structures and matrix iterators of [Eigen](https://gitlab.com/libeigen/eigen) library. Also, there is a demo project with numerous tests and displacement simulation of a flexible structure. Its mathematical model can be found in my [PhD thesis](https://www.proquest.com/openview/28b57f84e375831a4f1ae27be456ba2d/1?pq-origsite=gscholar&cbl=2026366&diss=y) (Chapter 6).
+This native [Godot](https://github.com/godotengine/godot) extension provides real and complex matrix algebra. It uses data structures and matrix iterators of [Eigen](https://gitlab.com/libeigen/eigen) library, also includes ODE solver based on [ODEINT](https://github.com/headmyshoulder/odeint-v2).
+
+## Demos
+1. There is a demo project in `demo` directory which includes numerous tests and displacement simulation of a flexible structure. Its mathematical model can be found in my [PhD thesis](https://www.proquest.com/openview/28b57f84e375831a4f1ae27be456ba2d/1?pq-origsite=gscholar&cbl=2026366&diss=y) (Chapter 6).
+2. 3D demo project based on a [Godot example](https://github.com/godotengine/godot-demo-projects/releases/download/4.2-31d1c0c/3d_occlusion_culling_mesh_lod.zip). It displays filtered versions of the texture in `Viewport` as shown below.
+
+![Demo3D screenshot](docs/demo3d_screenshot.png?raw=true)
 
 **An example**:
 ```gdscript
@@ -43,12 +49,25 @@ var C = gbl.new_mat(Vector2i(4, 2)) # Creates a 4 by 2 real matrix
 var gbl = GDBlas.new()
 var A = gbl.linspace(0, 1, 3) # Creates a 3 by 1 matrix with entries [ [0], [0.5], [1] ]
 ```
+- `mat_to_image_data(p_mat_array: Array, p_channel_width: int = 1)`: Places the entries of `GDBlasMat` objects in `p_mat_array` into a `PackedByteArray` which matches the data structure in `Image::get_data`.
+```gdscript
+var gbl = GDBlas.new()
+var dim = Vector2i(640, 480)
+var R = gbl.new_mat(dim)
+var G = gbl.new_mat(dim)
+var B = gbl.new_mat(dim)
+
+# fill and process R, G, B matrices
+
+var pack: PackedByteArray = gbl.mat_to_image_data([ R, G, B ])
+# An RGB8 formatted Image object can be created by using the data in 'pack'
+```
 
 ## GDBlasMat
 Reference counted real or complex matrix object. A real matrix returns enries as a `float` and complex matrix as `Vector2`.
 
 ### Functions
-- `resize(m, n)`: Resizes matrix to m by n
+- `resize(m: Variant, n: int = -1)`: Resizes matrix to m by n if both are integer. `n` is not required if `m` is `Vector2i`. 
 - `copy()`: Creates a copy of matrix.
 ```gdscript
 var gbl = GDBlas.new()
@@ -157,10 +176,13 @@ A.from_array( ... ) # Fill with values.
 B = gbl.new_mat(m2, n2)
 B.from_array( ... ) # Fill with values.
 var C = A.conv(B)
-assert(C.dimension() == Vector2i(m1 + m2 - 1, n1 + n2 -1)
+assert(C.dimension() == Vector2i(m1 + m2 - 1, n1 + n2 -1))
 var D = B.conv(A, 'same')
-assert(D.dimension() == Vector2i(m2, n2)
+assert(D.dimension() == Vector2i(m2, n2))
 ```
+- `pack(p_component: int = GDBlas.BOTH_COMPONENTS)`: Packs matrix entries into a `PackedFloat64Array` in row major format. Argument `p_component` can take values `GDBlas.REAL_COMPONENT`, `GDBlas.IMAG_COMPONENT` or `GDBlas.BOTH_COMPONENTS`. If both components of a complex matrix is packed imaginary part of each entry is placed right after the real component in the `PackedFloat64Array`. Returns `PackedFloat64Array`.
+- `unpack(p_packed_data: PackedFloat64Array, p_component: int = GDBlas.BOTH_COMPONENTS, p_step: int = 1, p_offset: int = 0)`: Unpacks the data in `p_packed_data` into the matrix. If `p_step = n`, each nth entry in the `p_packed_data` placed into the matrix starting from the entry indexed by `p_offset`. Number of elements in the array divided by `p_step` must match the matrix dimension.
+- `downsample(p_factor_m: int, p_factor_n: int, p_filter: GDBlasMat = null)`: Returns a new matrix constructed by picking rows and columns whose index satisfy `row_index % p_factor_m == 0` and `col_index % p_factor_n == 0`. If `p_filter` provided, the matrix is filtered (by convolving) by the the coefficients of `p_filter` before down sampling.
 
 ### Elementwise functions
 A list of implemented math functions are given below. They operate elementwise on the matrix and modifies matrix itself instead of creating a copy. You can visit C++ stdlib documentation for mathematical meaning of these functions.
