@@ -52,7 +52,7 @@ var A = gbl.linspace(0, 1, 3) # Creates a 3 by 1 matrix with entries [ [0], [0.5
 - `mat_to_image_data(p_mat_array: Array, p_channel_width: int = 1)`: Places the entries of `GDBlasMat` objects in `p_mat_array` into a `PackedByteArray` which matches the data structure in `Image::get_data`.
 ```gdscript
 var gbl = GDBlas.new()
-var dim = Vector2i(640, 480)
+var dim = Vector2i(480, 640)
 var R = gbl.new_mat(dim)
 var G = gbl.new_mat(dim)
 var B = gbl.new_mat(dim)

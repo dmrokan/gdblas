@@ -5,9 +5,9 @@ compatibility_minimum = "4.2"
 
 [libraries]
 
-macos.debug = "macos/libgdblas.macos.template_debug.framework"
-macos.release = "macos/libgdblas.macos.template_release.framework"
-windows.debug.x86_64 = "windows/libgdblas.windows.template_debug.x86_64.dll"
-windows.release.x86_64 = "windows/libgdblas.windows.template_release.x86_64.dll"
+macos.debug = "macos/macos.framework/libgdblas.macos.template_debug"
+macos.release = "macos/macos.framework/libgdblas.macos.template_release"
+windows.debug.x86_64 = "windows/gdblas.windows.template_debug.x86_64.dll"
+windows.release.x86_64 = "windows/gdblas.windows.template_release.x86_64.dll"
 linux.debug.x86_64 = "linux/libgdblas.linux.template_debug.x86_64.so"
 linux.release.x86_64 = "linux/libgdblas.linux.template_release.x86_64.so"
