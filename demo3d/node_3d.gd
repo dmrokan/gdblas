@@ -1,7 +1,7 @@
 extends Node3D
 
-const CAPTURE_PERIOD: float = 1.0 / 1e1
-const DRAW_PERIOD: float = 1.0 / 1e1
+const CAPTURE_PERIOD: float = 1.0 / 3e1
+const DRAW_PERIOD: float = 1.0 / 3e1
 var GBL: GDBlas = GDBlas.new()
 var R = GBL.new_mat()
 var G = GBL.new_mat()
@@ -17,7 +17,7 @@ var _filtered_mat2 = null
 func _capture_and_process():
 	var vp: Viewport = get_viewport()
 	var img: Image = vp.get_texture().get_image()
-	var img_size: Vector2i = img.get_size() / 3.5
+	var img_size: Vector2i = img.get_size() / 3
 	img.resize(img_size.x, img_size.y)
 	if img_size != _img_size:
 		R.resize(img_size.y, img_size.x)
