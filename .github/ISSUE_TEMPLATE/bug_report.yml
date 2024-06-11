@@ -6,13 +6,13 @@ body:
   attributes:
     value: |
       - Write a descriptive issue title above.
-      - Search [open](https://github.com/godotengine/godot-cpp-template/issues) and [closed](https://github.com/godotengine/godot-cpp-template/issues?q=is%3Aissue+is%3Aclosed) issues to ensure it has not already been reported.
+      - Search [open](https://github.com/dmrokan/gdblas/issues) and [closed](https://github.com/dmrokan/gdblas/issues?q=is%3Aissue+is%3Aclosed) issues to ensure it has not already been reported.
 - type: input
   attributes:
     label: Godot version
     description: >
-      Specify the Git commit hash of your Godot build.
-    placeholder: v4.0.stable.official [92bee43ad]
+      Specify the Git commit hash of your Godot build. You can find it by clicking About Godot menu button.
+    placeholder: v4.2.2.stable.official [15073afe3]
   validations:
     required: true
 
@@ -20,8 +20,26 @@ body:
   attributes:
     label: godot-cpp version
     description: >
-      Specify the Git commit hash of the godot-cpp submodule in your project. You can run `git status` inside the folder to check it.
-    placeholder: v4.0.stable.official [9d1c396c5]
+      If you build from source, specify the Git commit hash of the godot-cpp submodule in your project. You can run `git status` inside the folder to check it.
+    placeholder: godot-4.2.2-stable [98c143a48]
+  validations:
+    required: false
+
+- type: input
+  attributes:
+    label: GDBlas version
+    description: >
+      If you build from source, specify the Git commit hash of GDBlas or specify the GDBlas version you are using.
+    placeholder: godot-4.2.2-stable [98c143a48] or v1.3.1
+  validations:
+    required: false
+
+- type: input
+  attributes:
+    label: GDBlas version
+    description: >
+      If you build from source, specify the Git commit hash of GDBlas or specify the GDBlas version you are using.
+    placeholder: godot-4.2.2-stable [98c143a48] or v1.3.1
   validations:
     required: true
 
@@ -30,7 +48,7 @@ body:
     label: System information
     description: |
       Specify the OS version.
-    placeholder: Windows 10
+    placeholder: Ubuntu 22.04
   validations:
     required: true
 

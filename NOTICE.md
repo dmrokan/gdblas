@@ -1,4 +1,4 @@
-Code repository can be access by following (https://github.com/dmrokan/gdblas) .
+GDBlas's license can be found in `LICENSE.md` file. Code repository can be accessed by following [https://github.com/dmrokan/gdblas](https://github.com/dmrokan/gdblas).
 Some files in the code base contain third-party code under different licenses.
 
 ### Eigen

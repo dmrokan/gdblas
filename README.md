@@ -31,11 +31,11 @@ will print out
 >>> [ [3], [3], [3] ]
 ```
 
-# Objects
+# Classes
 ## GDBlas
 Reference counted base class which is used to create new matrices
 
-### Functions
+### Methods
 - `new_mat(p_rows, p_cols = -1)`: Creates new real matrix, Usage:
 ```gdscript
 var gbl = GDBlas.new()
@@ -49,7 +49,7 @@ var C = gbl.new_mat(Vector2i(4, 2)) # Creates a 4 by 2 real matrix
 var gbl = GDBlas.new()
 var A = gbl.linspace(0, 1, 3) # Creates a 3 by 1 matrix with entries [ [0], [0.5], [1] ]
 ```
-- `mat_to_image_data(p_mat_array: Array, p_channel_width: int = 1)`: Places the entries of `GDBlasMat` objects in `p_mat_array` into a `PackedByteArray` which matches the data structure in `Image::get_data`.
+- `mat_to_image_data(p_mat_array: Array, p_channel_width: int = 1)`: Places the entries of `GDBlasMat` objects in `p_mat_array` into a `PackedByteArray` which matches the data structure returned from `Image::get_data()`.
 ```gdscript
 var gbl = GDBlas.new()
 var dim = Vector2i(480, 640)
@@ -66,7 +66,7 @@ var pack: PackedByteArray = gbl.mat_to_image_data([ R, G, B ])
 ## GDBlasMat
 Reference counted real or complex matrix object. A real matrix returns enries as a `float` and complex matrix as `Vector2`.
 
-### Functions
+### Methods
 - `resize(m: Variant, n: int = -1)`: Resizes matrix to m by n if both are integer. `n` is not required if `m` is `Vector2i`. 
 - `copy()`: Creates a copy of matrix.
 ```gdscript
