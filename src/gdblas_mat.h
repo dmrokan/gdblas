@@ -40,6 +40,9 @@ public:
 
 	template <typename PT = scalar_t>
 	struct entry_packed_t {
+		static_assert(sizeof(PT) <= sizeof(scalar_t),
+					  "sizeof packed type must be less than or equal to sizeof(scalar_t)");
+
 		PT packed_entry;
 
 		operator scalar_t() const {
