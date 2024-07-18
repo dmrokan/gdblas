@@ -103,7 +103,7 @@ public:
 	static constexpr scalar_t EPS = 1e-16;
 	static constexpr index_t INVALID_INDEX{ -1, -1 };
 
-	static GDBlasMat *_cast(Variant &v) {
+	static GDBlasMat *_cast(const Variant &v) {
 		Object *tmp = v;
 		if (tmp == nullptr)
 			return nullptr;
@@ -309,7 +309,7 @@ public:
 				return matrix().block(i, j, m, n);
 			}
 
-			_ALWAYS_INLINE_ void set(U &v, s_t i, s_t j) {
+			_ALWAYS_INLINE_ void set(const U &v, s_t i, s_t j) {
 				matrix().coeffRef(i, j) = v;
 			}
 
@@ -385,7 +385,8 @@ public:
 			}
 
 			template <typename Func, typename Iter>
-			U _vector_accumulator(Func &func, Iter &iter, s_t idx1) {
+			// cppcheck-suppress functionStatic
+			U _vector_accumulator(const Func &func, Iter &iter, s_t idx1) {
 				U l(0);
 
 				s_t idx2 = 0;
@@ -397,7 +398,7 @@ public:
 			}
 
 			template <typename Func, typename Iter>
-			U _vector_accumulator(Func &func, Iter &&iter, s_t idx1) {
+			U _vector_accumulator(const Func &func, Iter &&iter, s_t idx1) {
 				return _vector_accumulator(func, iter, idx1);
 			}
 
@@ -429,7 +430,7 @@ public:
 
 			template <typename Func>
 			int _matrix_accumulator(Func &func, T &out, int axis) {
-				auto lsum = [](U &a, U &b, s_t i, s_t j) {
+				auto lsum = [](const U &a, const U &b, s_t i, s_t j) {
 					ignore_unused(i);
 					ignore_unused(j);
 
@@ -440,7 +441,7 @@ public:
 			}
 
 			int integrate(T &out, int axis) {
-				auto lsum = [](U &a, U &b, s_t i, s_t j) {
+				auto lsum = [](const U &a, const U &b, s_t i, s_t j) {
 					ignore_unused(i);
 					ignore_unused(j);
 
@@ -463,6 +464,7 @@ public:
 					s /= d.m * d.n;
 
 				int error = integrate(out, axis);
+				// cppcheck-suppress knownConditionTrueFalse
 				if (error)
 					return error;
 
@@ -530,14 +532,15 @@ public:
 				auto lminmax = [&](U &a, U &b, s_t i, s_t j) {
 					ignore_unused(a);
 					auto &m = minmax_val[GDBLAS_MIN(minmax_val.size() - 1, i)];
-					index_t &idx = arg_minmax[GDBLAS_MIN(arg_minmax.size() - 1, i)];
 
 					if (func(std::real(b), std::real(m))) {
 						m = b;
 						if (axis <= 0) {
+							index_t &idx = arg_minmax[GDBLAS_MIN(arg_minmax.size() - 1, i)];
 							idx[0] = j;
 							idx[1] = i;
 						} else if (axis == 1) {
+							index_t &idx = arg_minmax[GDBLAS_MIN(arg_minmax.size() - 1, i)];
 							idx[0] = i;
 							idx[1] = j;
 						}
@@ -562,10 +565,9 @@ public:
 			}
 
 			U l1_norm(int *error) {
-				U l = 0.0;
 				T tmp;
 
-				auto labssum = [](U &a, U &b, s_t i, s_t j) {
+				auto labssum = [](const U &a, const U &b, s_t i, s_t j) {
 					ignore_unused(i);
 					ignore_unused(j);
 
@@ -573,8 +575,9 @@ public:
 				};
 
 				*error = _matrix_accumulator(labssum, tmp, 0);
+				// cppcheck-suppress knownConditionTrueFalse
 				if (*error)
-					return l;
+					return GDBLAS_NaN;
 
 				auto cmp = [](U &a, U &b) {
 					return std::real(a) < std::real(b);
@@ -586,10 +589,9 @@ public:
 			}
 
 			U linf_norm(int *error) {
-				U l = 0.0;
 				T tmp;
 
-				auto labssum = [](U &a, U &b, s_t i, s_t j) {
+				auto labssum = [](const U &a, const U &b, s_t i, s_t j) {
 					ignore_unused(i);
 					ignore_unused(j);
 
@@ -597,8 +599,9 @@ public:
 				};
 
 				*error = _matrix_accumulator(labssum, tmp, 1);
+				// cppcheck-suppress knownConditionTrueFalse
 				if (*error)
-					return l;
+					return GDBLAS_NaN;
 
 				auto cmp = [](U &a, U &b) {
 					return std::real(a) < std::real(b);
@@ -610,10 +613,9 @@ public:
 			}
 
 			U fro_norm(int *error) {
-				U l = 0.0;
 				T tmp;
 
-				auto lsqsum = [](U &a, U &b, s_t i, s_t j) {
+				auto lsqsum = [](const U &a, const U &b, s_t i, s_t j) {
 					ignore_unused(i);
 					ignore_unused(j);
 
@@ -622,8 +624,9 @@ public:
 				};
 
 				*error = _matrix_accumulator(lsqsum, tmp, -1);
+				// cppcheck-suppress knownConditionTrueFalse
 				if (*error)
-					return l;
+					return GDBLAS_NaN;
 
 				return std::sqrt(tmp(0, 0));
 			}
@@ -691,12 +694,12 @@ public:
 
 			template <typename T1, typename T2 = T1, typename PT>
 			int pack(PT &packed_data, bool imag = false, int step = 1, int offset = 0) {
-				return pack_unpack<T1, T2>([](T1 *a, T2 *b) { *a = *b; }, packed_data, imag, step, offset);
+				return pack_unpack<T1, T2>([](T1 *a, const T2 *b) { *a = *b; }, packed_data, imag, step, offset);
 			}
 
 			template <typename T1, typename T2 = T1, typename PT>
 			int unpack(PT &packed_data, bool imag = false, int step = 1, int offset = 0) {
-				return pack_unpack<T1, T2>([](T1 *a, T2 *b) { *b = *a; }, packed_data, imag, step, offset);
+				return pack_unpack<T1, T2>([](const T1 *a, T2 *b) { *b = *a; }, packed_data, imag, step, offset);
 			}
 
 			void downsample(T &output_mat, int factor_m, int factor_n) {
@@ -711,12 +714,8 @@ public:
 				GDBLAS_V_DEBUG("Created complex ctx: %p", this);
 			}
 
-			~ComplexMatrixData() {
+			~ComplexMatrixData() override {
 				GDBLAS_V_DEBUG("Deleted complex ctx: %p", this);
-			}
-
-			BaseMatrixDataContext<ComplexMatrix> &ctx() {
-				return _ctx;
 			}
 		};
 
@@ -728,7 +727,7 @@ public:
 			ComplexMatrixData *c;
 		} mdata;
 
-		Context(int p_type) :
+		explicit Context(int p_type) :
 				type(p_type) {
 			switch (type) {
 				case BLAS_MATRIX: {
@@ -955,7 +954,7 @@ public:
 		void set_real_or_imag(Context *other, bool p_real, bool to) {
 			if (p_real)
 				real(other, to);
-			else if (!p_real)
+			else
 				imag(other, to);
 		}
 
@@ -1171,6 +1170,8 @@ public:
 			mat.unref();
 
 			*error = ERR_GENERAL;
+
+			return nullptr;
 		}
 
 		*error = 0;
@@ -1296,7 +1297,7 @@ public:
 	scalar_t _norm_implementation(int norm_type, int *error);
 	Ref<GDBlasMat> _conv_implementation(GDBlasMat *other, bool same, int *error);
 	int _set_scalar(Variant &val, int i, int j);
-	int _set_submatrix(Variant &val, int i, int j);
+	int _set_submatrix(const Variant &val, int i, int j);
 	Ref<GDBlasMat> _downsample_implementation(int factor_m, int factor_n,
 			GDBlasMat *filter = nullptr);
 

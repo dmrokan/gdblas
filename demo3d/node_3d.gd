@@ -38,6 +38,7 @@ func _capture_and_process():
 		G.resize(img_size.y, img_size.x)
 		B.resize(img_size.y, img_size.x)
 		_img_size = img_size
+		print(_img_size)
 
 	var img_data: PackedByteArray = img.get_data()
 

@@ -23,7 +23,7 @@ void GDBlasMat::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("T"), &GDBlasMat::transpose);
 	ClassDB::bind_method(D_METHOD("H"), &GDBlasMat::hermitian);
 	ClassDB::bind_method(D_METHOD("is_eq", "p_other", "p_eps", "p_norm_type"),
-						 &GDBlasMat::is_eq, DEFVAL(GDBlasMat::EPS), DEFVAL(GDBlasMat::NORM_FRO));
+						 &GDBlasMat::is_eq, DEFVAL(GDBlasMat::EPS), DEFVAL(GDBlasMat::NORM_1));
 	ClassDB::bind_method(D_METHOD("mul", "p_other"), &GDBlasMat::mul);
 	ClassDB::bind_method(D_METHOD("div", "p_other"), &GDBlasMat::div);
 	ClassDB::bind_method(D_METHOD("fill", "p_value"), &GDBlasMat::fill);
@@ -89,9 +89,9 @@ Variant GDBlasMat::resize(Variant p_m, int n) {
 	if (type == Variant::INT) {
 		m = p_m;
 	} else if (type == Variant::VECTOR2I) {
-		Vector2i size = p_m;
-		m = size.x;
-		n = size.y;
+		Vector2i tmp = p_m;
+		m = tmp.x;
+		n = tmp.y;
 	} else {
 		return ERR_INVALID_INPUT;
 	}
@@ -194,7 +194,7 @@ int GDBlasMat::_set_scalar(Variant &val, int i, int j) {
 	return ctx()->set(val, i, j);
 }
 
-int GDBlasMat::_set_submatrix(Variant &val, int i, int j) {
+int GDBlasMat::_set_submatrix(const Variant &val, int i, int j) {
 	GDBlasMat *o = _cast(val);
 
 	if (o == nullptr || this == o) {
@@ -264,7 +264,7 @@ Variant GDBlasMat::add(Variant other) {
 		scalar_t val = other;
 
 		auto add_func_r = [&](scalar_t a) { return a + val; };
-		auto add_func_rc = [&](complex_t &a) { return a + val; };
+		auto add_func_rc = [&](const complex_t &a) { return a + val; };
 
 		int type = get_type();
 		if (type == BLAS_MATRIX) {
@@ -279,7 +279,7 @@ Variant GDBlasMat::add(Variant other) {
 	} else if (_is_complex_number(other) && get_type() == BLAS_COMPLEX_MATRIX) {
 		complex_t val = _variant_to_complex(other);
 
-		auto add_func_cc = [&](complex_t &a) { return a + val; };
+		auto add_func_cc = [&](const complex_t &a) { return a + val; };
 
 		ctx()->get_complex_mdata()->elementwise_func(add_func_cc);
 
@@ -312,7 +312,7 @@ Variant GDBlasMat::sub(Variant other) {
 		scalar_t val = other;
 
 		auto add_func_r = [&](scalar_t a) { return a - val; };
-		auto add_func_rc = [&](complex_t &a) { return a - val; };
+		auto add_func_rc = [&](const complex_t &a) { return a - val; };
 
 		int type = get_type();
 		if (type == BLAS_MATRIX) {
@@ -327,7 +327,7 @@ Variant GDBlasMat::sub(Variant other) {
 	} else if (_is_complex_number(other) && get_type() == BLAS_COMPLEX_MATRIX) {
 		complex_t val = _variant_to_complex(other);
 
-		auto add_func_cc = [&](complex_t &a) { return a - val; };
+		auto add_func_cc = [&](const complex_t &a) { return a - val; };
 
 		ctx()->get_complex_mdata()->elementwise_func(add_func_cc);
 
@@ -427,9 +427,9 @@ Variant GDBlasMat::mul(Variant other) {
 			return ERR_INCOMPATIBLE_DIM;
 		}
 
-		auto func_rrr = [&](scalar_t &a, scalar_t &b) { return a * b; };
-		auto func_ccr = [&](complex_t &a, scalar_t &b) { return a * b; };
-		auto func_ccc = [&](complex_t &a, complex_t &b) { return a * b; };
+		auto func_rrr = [&](const scalar_t &a, const scalar_t &b) { return a * b; };
+		auto func_ccr = [&](const complex_t &a, const scalar_t &b) { return a * b; };
+		auto func_ccc = [&](const complex_t &a, const complex_t &b) { return a * b; };
 
 		int type1 = get_type();
 		int type2 = o->get_type();
@@ -498,9 +498,9 @@ Variant GDBlasMat::div(Variant other) {
 			return ERR_INCOMPATIBLE_DIM;
 		}
 
-		auto func_rrr = [&](scalar_t &a, scalar_t &b) { return a / b; };
-		auto func_ccr = [&](complex_t &a, scalar_t &b) { return a / b; };
-		auto func_ccc = [&](complex_t &a, complex_t &b) { return a / b; };
+		auto func_rrr = [&](const scalar_t &a, const scalar_t &b) { return a / b; };
+		auto func_ccr = [&](const complex_t &a, const scalar_t &b) { return a / b; };
+		auto func_ccc = [&](const complex_t &a, const complex_t &b) { return a / b; };
 
 		int type1 = get_type();
 		int type2 = o->get_type();
@@ -981,8 +981,8 @@ Variant GDBlasMat::pow(Variant p_exponent) {
 	}
 
 	auto pow_func_r = [&](scalar_t a) { return std::pow(a, exp_r); };
-	auto pow_func_rc = [&](complex_t &a) { return std::pow(a, exp_r); };
-	auto pow_func_cc = [&](complex_t &a) { return std::pow(a, exp_c); };
+	auto pow_func_rc = [&](const complex_t &a) { return std::pow(a, exp_r); };
+	auto pow_func_cc = [&](const complex_t &a) { return std::pow(a, exp_c); };
 
 	int type = get_type();
 	if (type == BLAS_MATRIX) {
@@ -1232,6 +1232,9 @@ Variant GDBlasMat::pack(int p_component) {
 	PackedFloat64Array packed_data;
 
 	int error = _pack_implementation(packed_data, p_component, 1);
+	if (error) {
+		return PackedFloat64Array();
+	}
 
 	return packed_data;
 }
@@ -1585,12 +1588,12 @@ Ref<GDBlasMat> GDBlasMat::_imag_implementation(int *error) {
 	if (*error)
 		return mat;
 
+	*error = 0;
+
 	if (get_type() == BLAS_COMPLEX_MATRIX)
 		ctx()->set_real_or_imag(mat->ctx(), false, true);
 	else
 		*error = ERR_INVALID_TYPE;
-
-	*error = 0;
 
 	return mat;
 }

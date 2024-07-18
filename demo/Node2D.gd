@@ -148,7 +148,7 @@ func _generate_system_matrices():
 
 	sysA = A
 	sysC = C
-	sysB = I.prod(Acont.inv()).prod(B) # Discrete time output matrix
+	sysB = Acont.inv().prod(I).prod(B) # Discrete time input matrix
 	sysu = gbl.new_mat(1)
 
 	_generate_initial_state(gbl)
