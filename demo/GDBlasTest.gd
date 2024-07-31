@@ -1,4 +1,4 @@
-extends Node
+extends Node2D
 
 func C(real: float, imag: float = 0.0) -> Vector2:
 	return Vector2(real, imag)
@@ -49,6 +49,17 @@ func cmp_mat(mat1: Array, mat2: Array) -> bool:
 
 			if not cmp_scalar(val1, val2):
 				return false
+
+	return true
+
+func cmp_vec2_array(a1: PackedVector2Array, a2: PackedVector2Array, eps: float = 1e-7):
+	var s = a1.size()
+	if s != a1.size():
+		return false
+
+	for i in range(s):
+		if not cmp_scalar(a1[i], a2[i], eps):
+			return false
 
 	return true
 
@@ -138,6 +149,38 @@ func _ready():
 	test21()
 	test22()
 	test23()
+	test24()
+	test25()
+	test26()
+	test27()
+	test28()
+	test29()
+	test30()
+	test31()
+	test32()
+	test33()
+	test34()
+	test35()
+	test36()
+	test37()
+	test38()
+	test39()
+	test40()
+	test41()
+	test42()
+	test43()
+	test44()
+	test45()
+	test46()
+	test47()
+	test48()
+	test49()
+	test50()
+	test51()
+	test52()
+	test53()
+	test54()
+	test55()
 
 func test01():
 	print("test01")
@@ -1017,7 +1060,665 @@ func test23():
 	assert(cmp_mat(Bdr.to_array(), [[0.6, 0.8, 0.8], [0.8, 1, 1], [0.8, 1, 1]]))
 	assert(cmp_mat(Bdi.to_array(), [[0.6, 0.8, 0.8], [0.8, 1, 1], [0.8, 1, 1]]))
 
+func test24():
+	print("test24")
 
-# Called every frame. 'delta' is the elapsed time since the previous frame.
+	var gbl = GDBlas.new()
+	var polygon: PackedVector2Array = PackedVector2Array()
+	polygon.append(Vector2(0, 0))
+	polygon.append(Vector2(0, 7))
+	polygon.append(Vector2(4, 2))
+	polygon.append(Vector2(2, 0))
+	polygon.append(Vector2(0, 0))
+	var area: float = gbl.area(polygon)
+	assert(cmp_scalar(area, 16))
+
+	polygon.clear()
+	polygon.append(Vector2(0, 0))
+	polygon.append(Vector2(0, 5))
+	polygon.append(Vector2(5, 5))
+	polygon.append(Vector2(5, 0))
+	polygon.append(Vector2(0, 0))
+
+	area = gbl.area(polygon)
+	assert(cmp_scalar(area, 25))
+
+var _line_buffer: Array;
+var _poly_colors: PackedColorArray;
+func test25():
+	print("test25")
+
+	var gbl = GDBlas.new()
+	var polygon: PackedVector2Array = PackedVector2Array()
+	polygon.append(Vector2(30, 30))
+	polygon.append(Vector2(30, 600))
+	polygon.append(Vector2(1080, 600))
+	polygon.append(Vector2(1080, 30))
+	_line_buffer = gbl.buffer(polygon, 15, 16, 16, 16)
+
+	var buffer: PackedVector2Array = PackedVector2Array([
+		C(1065, 585), C(45, 585), C(45, 30), C(43.85819, 24.25975),
+		C(40.6066, 19.3934), C(35.74025, 16.14181), C(30, 15), C(24.25975, 16.14181),
+		C(19.3934, 19.3934), C(16.14181, 24.25975), C(15, 30), C(15, 600),
+		C(16.14181, 605.7402), C(19.3934, 610.6066), C(24.25975, 613.8582),
+		C(30, 615), C(1080, 615), C(1085.74, 613.8582), C(1090.607, 610.6066),
+		C(1093.858, 605.7402), C(1095, 600), C(1095, 30), C(1093.858, 24.25975),
+		C(1090.607, 19.3934), C(1085.74, 16.14181), C(1080, 15), C(1074.26, 16.14181),
+		C(1069.393, 19.3934), C(1066.142, 24.25975), C(1065, 30), C(1065, 585)
+	])
+
+	assert(cmp_vec2_array(buffer, _line_buffer[0], 1e-3))
+
+	_poly_colors.resize(_line_buffer[0].size())
+	for i in range(_poly_colors.size()):
+		_poly_colors[i] = Color.from_hsv((randi() % 20) / 30.0, 0.75, 0.5)
+
+func test26():
+	print("test26")
+
+	var gbl = GDBlas.new()
+	var polygon: Array = [
+		PackedVector2Array([C(2, 1.3), C(2.4, 1.7), C(2.8, 1.8), C(3.4, 1.2), C(3.7, 1.6),
+							C(3.4, 2), C(4.1, 3), C(5.3, 2.6), C(5.4, 1.2), C(4.9, 0.8),
+							C(2.9, 0.7), C(2, 1.3)]),
+		PackedVector2Array([C(4.0, 2.0), C(4.2, 1.4), C(4.8, 1.9), C(4.4, 2.2), C(4.0, 2.0)])
+	]
+
+	var C: Vector2 = gbl.centroid(polygon)
+	assert(cmp_scalar(C, Vector2(4.04663, 1.6349), 1e-4))
+
+func test27():
+	print("test27")
+
+	var gbl = GDBlas.new()
+	var polygon: Array = [
+		PackedVector2Array([
+			C(2, 1.3), C(2.4, 1.7), C(2.8, 1.8), C(3.4, 1.2), C(3.7, 1.6),
+			C(3.4, 2), C(4.1, 3), C(5.3, 2.6), C(5.4, 1.2), C(4.9, 0.8), C(2.9, 0.7), C(2, 1.3)
+		]),
+		PackedVector2Array([ C(4.0, 2.0), C(4.2, 1.4), C(4.8, 1.9), C(4.4, 2.2), C(4.0, 2.0) ])
+	]
+	var line: PackedVector2Array = PackedVector2Array([ C(5, 0), C(2, 0) ])
+	var point: Vector2 = Vector2(4.3, 1.9)
+
+	var polygon2: Array = [
+		PackedVector2Array([ C(3, 3), C(4, 3), C(4, 4), C(3, 4) ])
+	]
+
+	var closest = gbl.closest_points(polygon, point)
+	assert(cmp_scalar(closest[0], C(4.2, 2.1), 1e-4))
+	assert(cmp_scalar(closest[1], C(4.3, 1.9), 1e-4))
+
+	closest = gbl.closest_points(point, polygon)
+	assert(cmp_scalar(closest[0], C(4.3, 1.9), 1e-4))
+	assert(cmp_scalar(closest[1], C(4.2, 2.1), 1e-4))
+
+	closest = gbl.closest_points(polygon, line)
+	assert(cmp_scalar(closest[0], C(2.9, 0.7), 1e-4))
+	assert(cmp_scalar(closest[1], C(2.9, 0), 1e-4))
+
+	closest = gbl.closest_points(line, polygon)
+	assert(cmp_scalar(closest[0], C(2.9, 0), 1e-4))
+	assert(cmp_scalar(closest[1], C(2.9, 0.7), 1e-4))
+
+	polygon = [
+		PackedVector2Array([ C(1, 1), C(2, 1), C(2, 2), C(1, 2) ])
+	]
+
+	closest = gbl.closest_points(polygon, polygon2)
+	assert(cmp_scalar(closest[0], C(2, 2), 1e-4))
+	assert(cmp_scalar(closest[1], C(3, 3), 1e-4))
+
+	closest = gbl.closest_points(polygon2, polygon)
+	assert(cmp_scalar(closest[0], C(3, 3), 1e-4))
+	assert(cmp_scalar(closest[1], C(2, 2), 1e-4))
+
+func test28():
+	print("test28")
+
+	var gbl = GDBlas.new()
+	var polgon: Array = [
+		[ C(2, 1.3), C(2.4, 1.7), C(2.8, 1.8), C(3.4, 1.2), C(3.7, 1.6),
+		  C(3.4, 2), C(4.1, 3), C(5.3, 2.6), C(5.4, 1.2), C(4.9, 0.8), C(2.9, 0.7), C(2, 1.3) ]
+	]
+
+	var hull: PackedVector2Array = gbl.convex_hull(polgon)
+	var hull2: PackedVector2Array = PackedVector2Array([
+		C(2, 1.3), C(2.4, 1.7), C(4.1, 3), C(5.3, 2.6), C(5.4, 1.2), C(4.9, 0.8), C(2.9, 0.7), C(2, 1.3)
+	])
+
+	assert(cmp_vec2_array(hull, hull2))
+
+func test29():
+	print("test29")
+
+	var gbl = GDBlas.new()
+	var polygon: Array = [
+		[ C(0, 0), C(10, 10), C(0, 9) ],
+		[ C(1, 2), C(4, 6), C(2, 8), C(1, 2) ],
+	]
+
+	var area: float = gbl.area(polygon)
+	assert(cmp_scalar(area, -7))
+
+	var corrected_polygon: Array = gbl.correct(polygon)
+
+	area = gbl.area(corrected_polygon)
+	assert(cmp_scalar(area, 38))
+
+func test30():
+	print("test30")
+
+	var gbl = GDBlas.new()
+	var polygon1: Array = [
+		[ C(0, 2), C(0, 3), C(2, 4), C(1, 2), C(0, 2) ]
+	]
+	var polygon2: Array = [
+		[ C(0, 4), C(3, 4), C(2, 2), C(0, 1), C(0, 4) ]
+	]
+	var polygon3: Array = [
+		[ C(-1, -1), C(-3, -4), C(-7, -7), C(-4, -3), C(-1, -1) ]
+	]
+
+	assert(gbl.covered_by(polygon1, polygon2) == 1)
+	assert(gbl.covered_by(polygon1, polygon3) == 0)
+	assert(gbl.covered_by(polygon1, polygon1) == 1)
+
+func test31():
+	print("test31")
+
+	var gbl = GDBlas.new()
+	var polygon: Array = [
+		[ C(0, 0), C(0, 3), C(3, 3), C(3, 0), C(0, 0) ]
+	]
+	var line1: PackedVector2Array = PackedVector2Array([ C(1, 1), C(2, 2), C(4, 4) ])
+	var line2: PackedVector2Array = PackedVector2Array([ C(1, 1), C(1, 2), C(1, 3) ])
+
+	assert(gbl.crosses(polygon, line1) == 1)
+	assert(gbl.crosses(line1, polygon) == 1)
+	assert(gbl.crosses(polygon, line2) == 0)
+
+func test32():
+	print("test32")
+
+	var gbl = GDBlas.new()
+	var polygon: Array = [
+		PackedVector2Array([ C(0, 0), C(0, 10), C(10, 10), C(10, 0), C(0, 0) ]),
+		PackedVector2Array([ C(1, 1), C(4, 1), C(4, 4), C(1, 4), C(1, 1) ]),
+	]
+
+	var densified_polygon: Array = gbl.densify(polygon, 6)
+
+	var densified_polygon2: Array = [
+		PackedVector2Array([
+			C(0, 0), C(0, 5), C(0, 10), C(5, 10), C(10, 10), C(10, 5), C(10, 0), C(5, 0), C(0, 0)
+		]),
+		PackedVector2Array([ C(1, 1), C(4, 1), C(4, 4), C(1, 4), C(1, 1) ]),
+	]
+
+	assert(cmp_vec2_array(densified_polygon[0], densified_polygon2[0]))
+	assert(cmp_vec2_array(densified_polygon[1], densified_polygon2[1]))
+
+	var ring: PackedVector2Array = PackedVector2Array([ C(0, 0), C(0, 10), C(10, 10), C(10, 0), C(0, 0) ])
+	var densified_ring: PackedVector2Array = gbl.densify(ring, 6)
+
+	var densified_ring2: PackedVector2Array = PackedVector2Array([
+		C(0, 0), C(0, 5), C(0, 10), C(5, 10), C(10, 10), C(10, 5), C(10, 0), C(5, 0), C(0, 0)
+	])
+
+	assert(cmp_vec2_array(densified_ring, densified_ring2))
+
+	var line: PackedVector2Array = PackedVector2Array([ C(0, 0), C(0, 10), C(10, 10), C(10, 0) ])
+	var densified_line: PackedVector2Array = gbl.densify(line, 6)
+
+	var densified_line2: PackedVector2Array = PackedVector2Array([
+		C(0, 0), C(0, 5), C(0, 10), C(5, 10), C(10, 10), C(10, 5), C(10, 0), C(5, 0)
+	])
+
+	assert(cmp_vec2_array(densified_line, densified_line2))
+
+func test33():
+	print("test33")
+
+	var gbl = GDBlas.new()
+	var polygon1: Array = [
+		PackedVector2Array([
+			C(2, 1.3), C(2.4, 1.7), C(2.8, 1.8), C(3.4, 1.2), C(3.7, 1.6), C(3.4, 2),
+			C(4.1, 3), C(5.3, 2.6), C(5.4, 1.2), C(4.9, 0.8), C(2.9, 0.7), C(2, 1.3)
+		]),
+		PackedVector2Array([ C(4.0, 2.0), C(4.2, 1.4), C(4.8, 1.9), C(4.4, 2.2), C(4.0, 2.0) ])
+	]
+	var polygon2: Array = [ PackedVector2Array([
+		C(4.0, -0.5), C(3.5, 1.0), C(2.0, 1.5), C(3.5, 2.0), C(4.0, 3.5),
+		C(4.5, 2.0), C(6.0, 1.5), C(4.5, 1.0), C(4.0, -0.5)
+	]) ]
+
+	var difference: Array = gbl.difference(polygon1, polygon2)
+
+	var areas: Dictionary = {
+		0: 0.02375,
+		1: 0.542951,
+		2: 0.0149697,
+		3: 0.226855,
+		4: 0.839424,
+	}
+
+	var i: int = 0;
+	for diff in difference:
+		var area: float = gbl.area(diff)
+		assert(cmp_scalar(areas[i], area, 1e-4))
+		i += 1
+
+	difference = gbl.difference(polygon2, polygon1)
+
+	areas = {
+		0: 0.525154,
+		1: 0.015,
+		2: 0.181136,
+		3: 0.340083,
+		4: 0.128798,
+		5: 0.307778,
+	}
+
+	i = 0;
+	for diff in difference:
+		var area: float = gbl.area(diff)
+		assert(cmp_scalar(areas[i], area, 1e-4))
+		i += 1
+
+func test34():
+	print("test34")
+
+	var gbl = GDBlas.new()
+	var line1: PackedVector2Array = PackedVector2Array([ C(0, 0), C(1, 1), C(1, 2), C(2, 1), C(2, 2) ])
+	var line2: PackedVector2Array = PackedVector2Array([ C(1, 0), C(0, 1), C(1, 1), C(2, 1), C(3, 1) ])
+
+	var dist: float = gbl.discrete_frechet_distance(line1, line2)
+	assert(cmp_scalar(dist, 1.41421, 1e-4))
+
+func test35():
+	print("test35")
+
+	var gbl = GDBlas.new()
+	var line1: PackedVector2Array = PackedVector2Array([ C(0, 0), C(1, 1), C(1, 2), C(2, 1), C(2, 2) ])
+	var line2: PackedVector2Array = PackedVector2Array([ C(1, 0), C(0, 1), C(1, 1), C(2, 1), C(3, 1) ])
+
+	var dist: float = gbl.discrete_hausdorff_distance(line1, line2)
+	assert(cmp_scalar(dist, 1.0, 1e-4))
+
+func test36():
+	print("test36")
+
+	var gbl = GDBlas.new()
+
+	var polygon1: Array = [
+		PackedVector2Array([ C(0,  2),  C(-2,  0),  C(-4,  2),  C(-2,  4),  C(0,  2) ])
+	]
+	var polygon2: Array = [
+		PackedVector2Array([ C(2,  2),  C(4,  4),  C(6,  2),  C(4,  0),  C(2,  2) ])
+	]
+	var polygon3: Array = [
+		PackedVector2Array([ C(0,  2),  C(2,  4),  C(4,  2),  C(2,  0),  C(0,  2) ])
+	]
+
+	var ring: PackedVector2Array = PackedVector2Array([ C(2,  2),  C(4,  4),  C(6,  2),  C(4,  0),  C(2,  2) ])
+	var point: Vector2 = Vector2(-2, 2)
+
+	assert(gbl.disjoint(polygon1, polygon2) == 1)
+	assert(gbl.disjoint(polygon1, polygon3) == 0)
+	assert(gbl.disjoint(polygon1, ring) == 1)
+	assert(gbl.disjoint(ring, polygon1) == 1)
+	assert(gbl.disjoint(polygon1, point) == 0)
+	assert(gbl.disjoint(point, polygon1) == 0)
+
+func test37():
+	print("test37")
+
+	var gbl = GDBlas.new()
+	var line: PackedVector2Array = PackedVector2Array()
+	for x in range(0.0, 5.0, 1.0):
+		for y in range(0.0, 5.0, 1.0):
+			line.append(Vector2(x, y))
+
+	var point: Vector2 = Vector2(1.4, 2.6)
+	var dist: float = gbl.comparable_distance(line, point)
+
+	assert(cmp_scalar(dist, 0.00235, 1e-4))
+
+func test38():
+	print("test38")
+
+	var gbl = GDBlas.new()
+	var polygon: Array = [
+		PackedVector2Array([
+			C(2, 1.3), C(2.4, 1.7), C(2.8, 1.8), C(3.4, 1.2), C(3.7, 1.6),
+			C(3.4, 2), C(4.1, 3), C(5.3, 2.6), C(5.4, 1.2), C(4.9, 0.8), C(2.9, 0.7), C(2, 1.3)
+		]),
+		PackedVector2Array([ C(4.0, 2.0), C(4.2, 1.4), C(4.8, 1.9), C(4.4, 2.2), C(4.0, 2.0) ])
+	]
+	var line: PackedVector2Array = PackedVector2Array([ C(0, 0), C(0, 3) ])
+	var point: Vector2 = Vector2(1, 2)
+
+	var dist: float = gbl.distance(point, polygon)
+	assert(cmp_scalar(dist, 1.22066, 1e-5))
+
+	dist = gbl.distance(point, line)
+	assert(cmp_scalar(dist, 1, 1e-5))
+
+func test39():
+	print("test39")
+
+	var gbl = GDBlas.new()
+	var polygon: Array = [
+		PackedVector2Array([
+			C(2, 1.3), C(2.4, 1.7), C(2.8, 1.8), C(3.4, 1.2), C(3.7, 1.6), C(3.4, 2),
+			C(4.1, 3), C(5.3, 2.6), C(5.4, 1.2), C(4.9, 0.8), C(2.9, 0.7), C(2, 1.3)
+		]),
+		PackedVector2Array([ C(4.0, 2.0), C(4.2, 1.4), C(4.8, 1.9), C(4.4, 2.2), C(4.0, 2.0) ])
+	]
+
+	var envelope: Rect2 = gbl.envelope(polygon)
+	assert(cmp_scalar(envelope.position, C(2, 0.7)))
+	assert(cmp_scalar(envelope.size, C(3.4, 2.3)))
+
+func test40():
+	print("test40")
+
+	var gbl = GDBlas.new()
+	var ring1: PackedVector2Array = PackedVector2Array([ C(0, 0), C(0, 5), C(5, 5), C(5, 0), C(0, 0) ])
+	var ring2: PackedVector2Array = PackedVector2Array([ C(5, 0), C(0, 0), C(0, 5), C(5, 5), C(5, 0) ])
+
+	assert(gbl.equals(ring1, ring2) == 1)
+
+func test41():
+	print("test41")
+
+	var gbl = GDBlas.new()
+	var polygon1: Array = [
+		PackedVector2Array([
+			C(2, 1.3), C(2.4, 1.7), C(2.8, 1.8), C(3.4, 1.2), C(3.7, 1.6), C(3.4, 2),
+			C(4.1, 3), C(5.3, 2.6), C(5.4, 1.2), C(4.9, 0.8), C(2.9, 0.7), C(2, 1.3)
+		]),
+		PackedVector2Array([ C(4.0, 2.0), C(4.2, 1.4), C(4.8, 1.9), C(4.4, 2.2), C(4.0, 2.0) ])
+	]
+	var polygon2: Array = [ PackedVector2Array([
+		C(4.0, -0.5), C(3.5, 1.0), C(2.0, 1.5), C(3.5, 2.0), C(4.0, 3.5),
+		C(4.5, 2.0), C(6.0, 1.5), C(4.5, 1.0), C(4.0, -0.5)
+	]) ]
+
+	var intersection: Array = gbl.intersection(polygon1, polygon2)
+
+	var areas: Dictionary = {
+		0: 2.50205,
+	}
+
+	var i: int = 0;
+	for intr in intersection:
+		var area: float = gbl.area(intr)
+		assert(cmp_scalar(areas[i], area, 1e-4))
+		i += 1
+
+	intersection = gbl.intersection(polygon2, polygon1)
+
+	areas = {
+		0: 2.50205,
+	}
+
+	i = 0;
+	for intr in intersection:
+		var area: float = gbl.area(intr)
+		assert(cmp_scalar(areas[i], area, 1e-4))
+		i += 1
+
+func test42():
+	print("test42")
+
+	var gbl = GDBlas.new()
+	var line1: PackedVector2Array = PackedVector2Array([ C(1, 1), C(2, 2), C(3, 3) ])
+	var line2: PackedVector2Array = PackedVector2Array([ C(2, 1), C(1, 2), C(4, 0) ])
+	var line3: PackedVector2Array = PackedVector2Array([ C(0.5, 0.5), C(0.5, 2.5), C(4, 4) ])
+
+	assert(gbl.intersects(line1, line2) == 1)
+	assert(gbl.intersects(line1, line3) == 0)
+
+func test43():
+	print("test43")
+
+	var gbl = GDBlas.new()
+	var polygon: Array = [
+		PackedVector2Array([
+			C(2, 1.3), C(2.4, 1.7), C(2.8, 1.8), C(3.4, 1.2), C(3.7, 1.6), C(3.4, 2),
+			C(4.1, 3), C(5.3, 2.6), C(5.4, 1.2), C(4.9, 0.8), C(2.9, 0.7), C(2, 1.3)
+		]),
+		PackedVector2Array([ C(1.9, 1.3), C(4.2, 1.4), C(4.8, 1.9), C(4.4, 2.2), C(4.0, 2.0) ])
+	]
+	var ring: PackedVector2Array = PackedVector2Array([ C(0, 0), C(10, 0), C(10, 10), C(0, 0), C(-10, 0) ])
+
+	assert(gbl.is_simple(polygon) == 1)
+	assert(gbl.is_simple(ring) == 0)
+
+func test44():
+	print("test44")
+
+	var gbl = GDBlas.new()
+	var polygon: Array = [
+		PackedVector2Array([ C(0, 0), C(0, 10), C(10, 10), C(10, 0) ]),
+		PackedVector2Array([ C(0, 0), C(9, 2), C(9, 1), C(0, 0) ]),
+		PackedVector2Array([ C(0, 0), C(2, 9), C(1, 9), C(0, 0) ]),
+	]
+
+	var failure: int = gbl.is_valid(polygon)
+	assert(failure != 0)
+	var could_be_fixed: bool = failure == 20 or failure == 22
+	assert(could_be_fixed)
+	if could_be_fixed:
+		polygon = gbl.correct(polygon)
+		failure = gbl.is_valid(polygon)
+		assert(failure == 0)
+
+func test45():
+	print("test45")
+
+	var gbl = GDBlas.new()
+	var line: PackedVector2Array = PackedVector2Array([ C(0, 0), C(1, 1), C(4, 8), C(3, 2) ])
+
+	var len: float = gbl.length(line)
+	assert(cmp_scalar(len, 15.1127, 1e-4))
+
+func test46():
+	print("test46")
+
+	var gbl = GDBlas.new()
+	var polygon1: Array = [ PackedVector2Array([ C(0, 0), C(0, 4), C(4, 4), C(4, 0), C(0, 0) ]) ]
+	var polygon2: Array = [ PackedVector2Array([ C(2, 2), C(2, 6), C(6, 7), C(6, 1), C(2, 2) ]) ]
+	var polygon3: Array = [ PackedVector2Array([ C(-1, -1), C(-3, -4), C(-7, -7), C(-4, -3), C(-1, -1) ]) ]
+
+	assert(gbl.overlaps(polygon1, polygon2) == 1)
+	assert(gbl.overlaps(polygon1, polygon3) == 0)
+
+func test47():
+	print("test47")
+
+	var gbl = GDBlas.new()
+	var polygon: Array = [ PackedVector2Array([ C(0, 0), C(3, 4), C(5, -5), C(-2, -4), C(0, 0) ]) ]
+
+	var perim: float = gbl.perimeter(polygon)
+	assert(cmp_scalar(perim, 25.7627, 1e-4))
+
+func test48():
+	print("test48")
+
+	var gbl = GDBlas.new()
+	var polygon: Array = [
+		PackedVector2Array([C(2, 1.3), C(2.4, 1.7), C(2.8, 1.8), C(3.4, 1.2), C(3.7, 1.6),
+							C(3.4, 2), C(4.1, 3), C(5.3, 2.6), C(5.4, 1.2), C(4.9, 0.8),
+							C(2.9, 0.7), C(2, 1.3)]),
+		PackedVector2Array([C(4.0, 2.0), C(4.2, 1.4), C(4.8, 1.9), C(4.4, 2.2), C(4.0, 2.0)])
+	]
+
+	var rel: String = gbl.relation(Vector2(4, 1), polygon)
+	assert(rel == "0FFFFF212")
+
+func test49():
+	print("test49")
+
+	var gbl = GDBlas.new()
+	var polygon: Array = [
+		PackedVector2Array([ C(0, 0), C(0, 9), C(10, 10), C(0, 0) ]),
+		PackedVector2Array([ C(1, 2), C(4, 6), C(2, 8), C(1, 2) ]),
+	]
+	var ring: PackedVector2Array = PackedVector2Array([ C(0, 0), C(8, 8), C(0, 9), C(0, 0) ])
+
+	var area: float = gbl.area(polygon)
+	assert(cmp_scalar(area, 38))
+	area = gbl.area(ring)
+	assert(cmp_scalar(area, -36))
+
+	polygon = gbl.reverse(polygon)
+	area = gbl.area(polygon)
+	assert(cmp_scalar(area, -38))
+	ring = gbl.reverse(ring)
+	area = gbl.area(ring)
+	assert(cmp_scalar(area, 36))
+
+func test50():
+	print("test50")
+
+	var gbl = GDBlas.new()
+	var line: PackedVector2Array = PackedVector2Array([
+		C(1.1, 1.1), C(2.5, 2.1), C(3.1, 3.1), C(4.9, 1.1), C(3.1, 1.9)
+	])
+	var simple_line: PackedVector2Array = PackedVector2Array([
+		C(1.1, 1.1), C(3.1, 3.1), C(4.9, 1.1), C(3.1, 1.9)
+	])
+
+	line = gbl.simplify(line, 0.5)
+	assert(cmp_vec2_array(line, simple_line))
+
+func test51():
+	print("test51")
+
+	var gbl = GDBlas.new()
+	var polygon1: Array = [
+		PackedVector2Array([
+			C(2, 1.3), C(2.4, 1.7), C(2.8, 1.8), C(3.4, 1.2), C(3.7, 1.6), C(3.4, 2),
+			C(4.1, 3), C(5.3, 2.6), C(5.4, 1.2), C(4.9, 0.8), C(2.9, 0.7), C(2, 1.3)
+		]),
+		PackedVector2Array([ C(4.0, 2.0), C(4.2, 1.4), C(4.8, 1.9), C(4.4, 2.2), C(4.0, 2.0) ])
+	]
+	var polygon2: Array = [ PackedVector2Array([
+		C(4.0, -0.5), C(3.5, 1.0), C(2.0, 1.5), C(3.5, 2.0), C(4.0, 3.5),
+		C(4.5, 2.0), C(6.0, 1.5), C(4.5, 1.0), C(4.0, -0.5)
+	]) ]
+
+	var difference: Array = gbl.sym_difference(polygon1, polygon2)
+
+	var areas: Dictionary = {
+		0: 0.542951,
+		1: 0.525154,
+		2: 0.0149697,
+		3: 0.181136,
+		4: 0.226855,
+		5: 0.839424,
+		6: 0.02375,
+		7: 0.340083,
+		8: 0.015,
+		9: 0.128798,
+		10: 0.307778,
+	}
+
+	var i: int = 0;
+	for diff in difference:
+		var area: float = gbl.area(diff)
+		assert(cmp_scalar(areas[i], area, 1e-4))
+		i += 1
+
+func test52():
+	print("test52")
+
+	var gbl = GDBlas.new()
+	var polygon: Array = [
+		PackedVector2Array([
+			C(0, 0), C(0, 3), C(2, 3), C(2, 2), C(1, 2), C(1, 1),
+			C(2, 1), C(2, 2), C(3, 2), C(3, 0), C(0, 0)
+		])
+	]
+
+	assert(gbl.touches(polygon) == 1)
+
+	var polygon1: Array = [
+		PackedVector2Array([ C(0, 0), C(0, 4), C(4, 4), C(4, 0), C(0, 0) ])
+	]
+	var polygon2: Array = [
+		PackedVector2Array([ C(0, 0), C(0, -4), C(-4, -4), C(-4, 0), C(0, 0) ])
+	]
+	var polygon3: Array = [
+		PackedVector2Array([ C(1, 1), C(0, -4), C(-4, -4), C(-4, 0), C(1, 1) ])
+	]
+
+	assert(gbl.touches(polygon1, polygon2) == 1)
+	assert(gbl.touches(polygon1, polygon3) == 0)
+	assert(gbl.touches(polygon2, polygon3) == 0)
+
+
+func test53():
+	print("test53")
+
+	var gbl = GDBlas.new()
+	var polygon1: Array = [
+		PackedVector2Array([
+			C(2, 1.3), C(2.4, 1.7), C(2.8, 1.8), C(3.4, 1.2), C(3.7, 1.6), C(3.4, 2),
+			C(4.1, 3), C(5.3, 2.6), C(5.4, 1.2), C(4.9, 0.8), C(2.9, 0.7), C(2, 1.3)
+		]),
+		PackedVector2Array([ C(4.0, 2.0), C(4.2, 1.4), C(4.8, 1.9), C(4.4, 2.2), C(4.0, 2.0) ])
+	]
+	var polygon2: Array = [ PackedVector2Array([
+		C(4.0, -0.5), C(3.5, 1.0), C(2.0, 1.5), C(3.5, 2.0), C(4.0, 3.5),
+		C(4.5, 2.0), C(6.0, 1.5), C(4.5, 1.0), C(4.0, -0.5)
+	]) ]
+
+	var union: Array = gbl.union_(polygon1, polygon2)
+
+	var areas: Dictionary = {
+		0: 5.64795,
+	}
+
+	var i: int = 0;
+	for u in union:
+		var area: float = gbl.area(u)
+		assert(cmp_scalar(areas[i], area, 1e-4))
+		i += 1
+
+func test54():
+	print("test54")
+
+	var gbl = GDBlas.new()
+	var polygon: Array = [ PackedVector2Array([
+		C(0, 0), C(0, 0), C(0, 5), C(5, 5), C(5, 5), C(5, 5),
+		C(5, 0), C(5, 0), C(0, 0), C(0, 0), C(0, 0), C(0, 0)
+	]) ]
+
+	var unique: Array = gbl.unique(polygon)
+	var unique2: Array = [ PackedVector2Array([ C(0, 0), C(0, 5), C(5, 5), C(5, 0), C(0, 0) ]) ]
+	assert(cmp_vec2_array(unique[0], unique2[0]))
+
+func test55():
+	print("test55")
+
+	var gbl = GDBlas.new()
+	var polygon: Array = [
+		PackedVector2Array([C(2, 1.3), C(2.4, 1.7), C(2.8, 1.8), C(3.4, 1.2), C(3.7, 1.6),
+							C(3.4, 2), C(4.1, 3), C(5.3, 2.6), C(5.4, 1.2), C(4.9, 0.8),
+							C(2.9, 0.7), C(2, 1.3)]),
+		PackedVector2Array([C(4.0, 2.0), C(4.2, 1.4), C(4.8, 1.9), C(4.4, 2.2), C(4.0, 2.0)])
+	]
+
+	assert(gbl.within(Vector2(4, 1), polygon) == 1)
+	assert(gbl.within(Vector2(40, 1), polygon) == 0)
+
 func _process(delta):
 	pass
+
+func _draw():
+	draw_polygon(_line_buffer[0], _poly_colors)
+	draw_polyline(_line_buffer[0], Color.SADDLE_BROWN, 6)

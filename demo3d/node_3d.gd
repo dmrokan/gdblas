@@ -38,7 +38,6 @@ func _capture_and_process():
 		G.resize(img_size.y, img_size.x)
 		B.resize(img_size.y, img_size.x)
 		_img_size = img_size
-		print(_img_size)
 
 	var img_data: PackedByteArray = img.get_data()
 
@@ -145,20 +144,37 @@ func _input(event):
 		update_labels()
 
 var time_accum: float = 0.0
+var total_time: float = 0.0
+var proc_counter: int = 0
+var avg_fps: float = 0.0
 func _process(delta):
-	$Performance.text = """%d FPS (%.2f mspf)
+	if proc_counter == 0:
+		avg_fps = Engine.get_frames_per_second()
+		proc_counter += 1
+	else:
+		avg_fps = avg_fps * proc_counter + Engine.get_frames_per_second()
+		proc_counter += 1
+		avg_fps /= proc_counter
 
-Currently rendering:
-%d objects
-%dK primitive indices
-%d draw calls
-""" % [
-	Engine.get_frames_per_second(),
-	1000.0 / Engine.get_frames_per_second(),
-	RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME),
-	RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME) * 0.001,
-	RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME),
-]
+		if total_time > 2.0:
+			total_time = 0.0
+			proc_counter = 0
+
+			$Performance.text = """%d FPS (%.2f mspf)
+
+		Currently rendering:
+		%d objects
+		%dK primitive indices
+		%d draw calls
+		""" % [
+			avg_fps,
+			1000.0 / avg_fps,
+			RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME),
+			RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME) * 0.001,
+			RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME),
+		]
+
+	total_time += delta
 
 	if time_accum > DRAW_PERIOD:
 		var vp: Viewport = get_viewport()

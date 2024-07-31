@@ -1,8 +1,6 @@
 #ifndef GDBLAS_MAT_H_
 #define GDBLAS_MAT_H_
 
-#define EIGEN_MAX_ALIGN_BYTES 16
-
 #include <cmath>
 #include <complex>
 #include <vector>
@@ -12,6 +10,13 @@
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/packed_float64_array.hpp>
 #include <godot_cpp/variant/variant.hpp>
+
+#define EIGEN_MAX_ALIGN_BYTES 16
+#define EIGEN_NO_AUTOMATIC_RESIZING
+#define EIGEN_NO_IO
+#define EIGEN_NO_DEBUG
+#define EIGEN_MPL2_ONLY
+#define EIGEN_NO_DEBUG
 
 #include <Eigen/Dense>
 
@@ -41,7 +46,7 @@ public:
 	template <typename PT = scalar_t>
 	struct entry_packed_t {
 		static_assert(sizeof(PT) <= sizeof(scalar_t),
-					  "sizeof packed type must be less than or equal to sizeof(scalar_t)");
+				"sizeof packed type must be less than or equal to sizeof(scalar_t)");
 
 		PT packed_entry;
 
@@ -637,23 +642,23 @@ public:
 				Dimension d2 = mat2->dimension();
 				Dimension d3 = dimension();
 
-				int m1 = d1.m;
-				int n1 = d1.n;
-				int m2 = d2.m;
-				int n2 = d2.n;
-				int i1_0 = same ? m2 / 2 : 0;
-				int i2_0 = same ? n2 / 2 : 0;
-				int i1_1 = same ? m1 + m2 / 2 : d3.m;
-				int i2_1 = same ? n1 + n2 / 2 : d3.n;
-				int yi1_offset = same ? m2 / 2 : 0;
-				int yi2_offset = same ? n2 / 2 : 0;
+				const int m1 = d1.m;
+				const int n1 = d1.n;
+				const int m2 = d2.m;
+				const int n2 = d2.n;
+				const int i1_offset = same ? m2 / 2 : 0;
+				const int i2_offset = same ? n2 / 2 : 0;
+				const int i1_0 = same ? m2 / 2 : 0;
+				const int i2_0 = same ? n2 / 2 : 0;
+				const int i1_1 = same ? m1 + m2 / 2 : d3.m;
+				const int i2_1 = same ? n1 + n2 / 2 : d3.n;
 
 				for (int i1 = i1_0; i1 < i1_1; ++i1) {
 					for (int i2 = i2_0; i2 < i2_1; ++i2) {
-						int j1_0 = GDBLAS_MAX(i1 - m1 + 1, 0);
-						int j2_0 = GDBLAS_MAX(i2 - n1 + 1, 0);
-						int j1_1 = GDBLAS_MIN(m2, i1 + 1);
-						int j2_1 = GDBLAS_MIN(n2, i2 + 1);
+						const int j1_0 = GDBLAS_MAX(i1 - m1 + 1, 0);
+						const int j2_0 = GDBLAS_MAX(i2 - n1 + 1, 0);
+						const int j1_1 = GDBLAS_MIN(m2, i1 + 1);
+						const int j2_1 = GDBLAS_MIN(n2, i2 + 1);
 
 						U yi = 0;
 
@@ -663,7 +668,7 @@ public:
 							}
 						}
 
-						set(yi, i1 - yi1_offset, i2 - yi2_offset);
+						set(yi, i1 - i1_offset, i2 - i2_offset);
 					}
 				}
 
