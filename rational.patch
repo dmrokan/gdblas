@@ -1,0 +1,24 @@
+--- boost/libs/rational/include/boost/rational.hpp	2024-07-31 23:49:25.025152763 +0300
++++ boost/libs/rational/include/boost/rational.hpp.modified	2024-07-31 23:53:04.925500721 +0300
+@@ -946,15 +946,15 @@
+             if ( c == '/' )
+             {
+                 if ( is >> std::noskipws >> d )
+-                    try {
++                  { if constexpr (true) {
+                         r.assign( n, d );
+-                    } catch ( bad_rational & ) {        // normalization fail
+-                        try { is.setstate(ios::failbit); }
+-                        catch ( ... ) {}  // don't throw ios_base::failure...
++                    } else {        // normalization fail
++                      if (true) { is.setstate(ios::failbit); }
++                        else {}  // don't throw ios_base::failure...
+                         if ( is.exceptions() & ios::failbit )
+-                            throw;   // ...but the original exception instead
++                          (void) 0;   // ...but the original exception instead
+                         // ELSE: suppress the exception, use just error flags
+-                    }
++                    } }
+             }
+             else
+                 is.setstate( ios::failbit );

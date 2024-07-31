@@ -22,6 +22,10 @@ using line_t = boost::geometry::model::linestring<point_t>;
 using segment_t = boost::geometry::model::segment<point_t>;
 using box_t = boost::geometry::model::box<point_t>;
 
+namespace godot {
+
+namespace GDBlasGeometry {
+
 static polygon_set_t vector2_array_to_polygon_set(const PackedVector2Array &array) {
 	polygon_set_t set;
 	set.resize(array.size());
@@ -184,7 +188,7 @@ inline static int convert_from_boost_type_to_godot_type(const box_t &box, Rect2 
 }
 
 template <typename T, typename ARG>
-static GDBlasGeometry::scalar_t GDBlasGeometry::area(const ARG &arg) {
+static scalar_t area(const ARG &arg) {
 	T geom{};
 
 	int result = convert_from_godot_type_to_boost_type(arg, geom);
@@ -195,6 +199,563 @@ static GDBlasGeometry::scalar_t GDBlasGeometry::area(const ARG &arg) {
 
 	return area;
 }
+
+template <typename T1, typename T2, typename ARG1, typename ARG2>
+static PackedVector2Array closest_points(const ARG1 &arg1, const ARG2 &arg2, bool left_to_right) {
+	T1 geom1{};
+
+	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
+	if (result < 0)
+		return Array();
+
+	T2 geom2{};
+	result = convert_from_godot_type_to_boost_type(arg2, geom2);
+	if (result < 0)
+		return Array();
+
+	segment_t seg{};
+
+	if (left_to_right)
+		bg::closest_points(geom1, geom2, seg);
+	else
+		bg::closest_points(geom2, geom1, seg);
+
+	Array output;
+	output.append(Vector2(bg::get<0, 0>(seg), bg::get<0, 1>(seg)));
+	output.append(Vector2(bg::get<1, 0>(seg), bg::get<1, 1>(seg)));
+
+	return output;
+}
+
+template <typename T, typename ARG>
+static PackedVector2Array convex_hull(const ARG &arg) {
+	T geom{};
+
+	int result = convert_from_godot_type_to_boost_type(arg, geom);
+	if (result < 0)
+		return PackedVector2Array();
+
+	ring_t hull{};
+	bg::convex_hull(geom, hull);
+
+	PackedVector2Array output;
+	result = convert_from_boost_type_to_godot_type(hull, output);
+	if (result < 0)
+		return PackedVector2Array();
+
+	return output;
+}
+
+template <typename T, typename ARG>
+static ARG correct(const ARG &arg) {
+	T geom{};
+
+	int result = convert_from_godot_type_to_boost_type(arg, geom);
+	if (result < 0)
+		return ARG();
+
+	bg::correct(geom);
+
+	ARG output;
+	result = convert_from_boost_type_to_godot_type(geom, output);
+	if (result < 0)
+		return ARG();
+
+	return output;
+}
+
+template <typename T1, typename T2, bool B = true, typename ARG1, typename ARG2>
+static int covered_by(const ARG1 &geom1, const ARG2 &geom2, bool left_to_right) {
+	T1 g1{};
+	int result = convert_from_godot_type_to_boost_type(geom1, g1);
+	if (result < 0)
+		return result;
+
+	T2 g2{};
+	result = convert_from_godot_type_to_boost_type(geom2, g2);
+	if (result < 0)
+		return result;
+
+	if constexpr (B) {
+		result = static_cast<int>(left_to_right ? bg::covered_by(g1, g2) : bg::covered_by(g2, g1));
+	} else {
+		result = static_cast<int>(left_to_right ? bg::covered_by(g1, g2) : -1);
+	}
+
+	return result;
+}
+
+template <typename T1, typename T2, typename ARG1, typename ARG2>
+static int crosses(const ARG1 &arg1, const ARG2 &arg2) {
+	T1 geom1{};
+	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
+	if (result < 0)
+		return result;
+
+	T2 geom2{};
+	result = convert_from_godot_type_to_boost_type(arg2, geom2);
+	if (result < 0)
+		return result;
+
+	result = static_cast<int>(bg::crosses(geom1, geom2));
+
+	return result;
+}
+
+template <typename T, typename ARG>
+static ARG densify(const ARG &arg, scalar_t max_distance) {
+	T geom{};
+	int result = convert_from_godot_type_to_boost_type(arg, geom);
+	if (result < 0)
+		return ARG();
+
+	T output_geom{};
+	bg::densify(geom, output_geom, max_distance);
+
+	ARG output;
+	result = convert_from_boost_type_to_godot_type(output_geom, output);
+	if (result < 0)
+		return ARG();
+
+	return output;
+}
+
+template <typename T1, typename T2, bool B = true, typename ARG1, typename ARG2>
+static Array difference(const ARG1 &arg1, const ARG2 &arg2, bool left_to_right) {
+	T1 geom1{};
+	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
+	if (result < 0)
+		return Array();
+
+	T2 geom2{};
+	result = convert_from_godot_type_to_boost_type(arg2, geom2);
+	if (result < 0)
+		return Array();
+
+	std::list<T1> collection;
+
+	if constexpr (B) {
+		left_to_right ? bg::difference(geom1, geom2, collection) : bg::difference(geom2, geom1, collection);
+	} else {
+		left_to_right ? bg::difference(geom1, geom2, collection) : (void) 0;
+	}
+
+	Array output;
+
+	BOOST_FOREACH(T1 const &g, collection) {
+		ARG1 out_i;
+		result = convert_from_boost_type_to_godot_type(g, out_i);
+		if (result < 0)
+			continue;
+
+		output.append(out_i);
+    }
+
+	return output;
+}
+template <typename T1, typename T2, typename ARG1, typename ARG2>
+static scalar_t discrete_frechet_distance(const ARG1 &arg1, const ARG2 &arg2) {
+	T1 geom1{};
+	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
+	if (result < 0)
+		return std::nan("nan");
+
+	T2 geom2{};
+	result = convert_from_godot_type_to_boost_type(arg2, geom2);
+	if (result < 0)
+		return std::nan("nan");
+
+	return bg::discrete_frechet_distance(geom1, geom2);
+}
+
+template <typename T1, typename T2, typename ARG1, typename ARG2>
+static scalar_t discrete_hausdorff_distance(const ARG1 &arg1, const ARG2 &arg2) {
+	T1 geom1{};
+	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
+	if (result < 0)
+		return std::nan("nan");
+
+	T2 geom2{};
+	result = convert_from_godot_type_to_boost_type(arg2, geom2);
+	if (result < 0)
+		return std::nan("nan");
+
+	return bg::discrete_hausdorff_distance(geom1, geom2);
+}
+
+template <typename T1, typename T2, typename ARG1, typename ARG2>
+static int disjoint(const ARG1 &arg1, const ARG2 &arg2) {
+	T1 geom1{};
+	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
+	if (result < 0)
+		return result;
+
+	T2 geom2{};
+	result = convert_from_godot_type_to_boost_type(arg2, geom2);
+	if (result < 0)
+		return result;
+
+	result = static_cast<int>(bg::disjoint(geom1, geom2));
+
+	return result;
+}
+
+template <typename T1, typename T2, typename ARG1, typename ARG2>
+static scalar_t distance(const ARG1 &arg1, const ARG2 &arg2, bool comparable) {
+	T1 geom1{};
+	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
+	if (result < 0)
+		return result;
+
+	T2 geom2{};
+	result = convert_from_godot_type_to_boost_type(arg2, geom2);
+	if (result < 0)
+		return result;
+
+	if (comparable)
+		return bg::comparable_distance(geom1, geom2);
+
+	return bg::distance(geom1, geom2);
+}
+
+template <typename T, typename ARG>
+static Rect2 envelope(const ARG &arg) {
+	T geom{};
+	int result = convert_from_godot_type_to_boost_type(arg, geom);
+	if (result < 0)
+		return GDBLAS_NaN_RECT;
+
+	box_t output{};
+	bg::envelope(geom, output);
+
+	Rect2 rect;
+	result = convert_from_boost_type_to_godot_type(output, rect);
+	if (result < 0)
+		return GDBLAS_NaN_RECT;
+
+	return rect;
+}
+
+template <typename T, typename ARG>
+static int equals(const ARG &arg1, const ARG &arg2) {
+	T geom1{};
+	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
+	if (result < 0)
+		return result;
+
+	T geom2{};
+	result = convert_from_godot_type_to_boost_type(arg2, geom2);
+	if (result < 0)
+		return result;
+
+	result = static_cast<int>(bg::equals(geom1, geom2));
+
+	return result;
+}
+
+template <typename T1, typename T2, typename ARG1, typename ARG2>
+static Array intersection(const ARG1 &arg1, const ARG2 &arg2) {
+	T1 geom1{};
+	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
+	if (result < 0)
+		return Array();
+
+	T2 geom2{};
+	result = convert_from_godot_type_to_boost_type(arg2, geom2);
+	if (result < 0)
+		return Array();
+
+	std::deque<T2> collection;
+	bg::intersection(geom1, geom2, collection);
+
+	Array output;
+
+	BOOST_FOREACH(T2 const &g, collection) {
+		ARG2 out_i;
+		result = convert_from_boost_type_to_godot_type(g, out_i);
+		if (result < 0)
+			continue;
+
+		output.append(out_i);
+    }
+
+	return output;
+}
+
+template <typename T, typename ARG>
+static int intersects(const ARG &arg) {
+	T geom{};
+	int result = convert_from_godot_type_to_boost_type(arg, geom);
+	if (result < 0)
+		return result;
+
+	result = static_cast<int>(bg::intersects(geom));
+
+	return result;
+}
+
+template <typename T1, typename T2, typename ARG1, typename ARG2>
+static int intersects(const ARG1 &arg1, const ARG2 &arg2) {
+	T1 geom1{};
+	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
+	if (result < 0)
+		return result;
+
+	T2 geom2{};
+	result = convert_from_godot_type_to_boost_type(arg2, geom2);
+	if (result < 0)
+		return result;
+
+	result = static_cast<int>(bg::intersects(geom1, geom2));
+
+	return result;
+}
+
+template <typename T, typename ARG>
+static int is_simple(const ARG &arg) {
+	T geom{};
+	int result = convert_from_godot_type_to_boost_type(arg, geom);
+	if (result < 0)
+		return result;
+
+	result = static_cast<int>(bg::is_simple(geom));
+
+	return result;
+}
+template <typename T, typename ARG>
+static int is_valid(const ARG &arg) {
+	T geom{};
+	int result = convert_from_godot_type_to_boost_type(arg, geom);
+	if (result < 0)
+		return result;
+
+	bg::validity_failure_type failure;
+	bg::is_valid(geom, failure);
+
+	return static_cast<int>(failure);
+}
+
+template <typename T, typename ARG>
+static scalar_t length(const ARG &arg) {
+	T geom{};
+	scalar_t result = convert_from_godot_type_to_boost_type(arg, geom);
+	if (result < 0)
+		return std::nan("nan");
+
+	return bg::length(geom);
+}
+
+template <typename T1, typename T2, typename ARG1, typename ARG2>
+static int overlaps(const ARG1 &arg1, const ARG2 &arg2) {
+	T1 geom1{};
+	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
+	if (result < 0)
+		return result;
+
+	T2 geom2{};
+	result = convert_from_godot_type_to_boost_type(arg2, geom2);
+	if (result < 0)
+		return result;
+
+	result = static_cast<int>(bg::overlaps(geom1, geom2));
+
+	return result;
+}
+
+template <typename T, typename ARG>
+static scalar_t perimeter(const ARG &arg) {
+	T geom{};
+	scalar_t result = convert_from_godot_type_to_boost_type(arg, geom);
+	if (result < 0)
+		return std::nan("nan");
+
+	return bg::perimeter(geom);
+}
+
+template <typename T1, typename T2, typename ARG1, typename ARG2>
+static String relation(const ARG1 &arg1, const ARG2 &arg2, bool left_to_right) {
+	T1 geom1{};
+	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
+	if (result < 0)
+		return String();
+
+	T2 geom2{};
+	result = convert_from_godot_type_to_boost_type(arg2, geom2);
+	if (result < 0)
+		return String();
+
+	bg::de9im::matrix matrix = left_to_right ? bg::relation(geom1, geom2) : bg::relation(geom2, geom1);
+
+	String output(matrix.str().c_str());
+
+	return output;
+}
+
+template <typename T, typename ARG>
+static ARG reverse(const ARG &arg) {
+	T geom{};
+	scalar_t result = convert_from_godot_type_to_boost_type(arg, geom);
+	if (result < 0)
+		return ARG();
+
+	bg::reverse(geom);
+
+	ARG output;
+	result = convert_from_boost_type_to_godot_type(geom, output);
+	if (result < 0)
+		return ARG();
+
+	return output;
+}
+
+template <typename T, typename ARG>
+static ARG simplify(const ARG &arg, scalar_t max_distance) {
+	T geom{};
+	int result = convert_from_godot_type_to_boost_type(arg, geom);
+	if (result < 0)
+		return ARG();
+
+	T output_geom{};
+	bg::simplify(geom, output_geom, max_distance);
+
+	ARG output;
+	result = convert_from_boost_type_to_godot_type(output_geom, output);
+	if (result < 0)
+		return ARG();
+
+	return output;
+}
+
+template <typename T1, typename T2, typename ARG1, typename ARG2>
+static Array sym_difference(const ARG1 &arg1, const ARG2 &arg2, bool left_to_right) {
+	T1 geom1{};
+	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
+	if (result < 0)
+		return Array();
+
+	T2 geom2{};
+	result = convert_from_godot_type_to_boost_type(arg2, geom2);
+	if (result < 0)
+		return Array();
+
+	std::list<T1> collection;
+	left_to_right ? bg::sym_difference(geom1, geom2, collection) :
+		bg::sym_difference(geom2, geom1, collection);
+
+	Array output;
+
+	BOOST_FOREACH(T1 const &g, collection) {
+		ARG1 out_i;
+		result = convert_from_boost_type_to_godot_type(g, out_i);
+		if (result < 0)
+			continue;
+
+		output.append(out_i);
+    }
+
+	return output;
+}
+
+template <typename T, typename ARG>
+static int touches(const ARG &arg) {
+	T geom{};
+	scalar_t result = convert_from_godot_type_to_boost_type(arg, geom);
+	if (result < 0)
+		return result;
+
+	result = static_cast<int>(bg::touches(geom));
+
+	return result;
+}
+
+template <typename T1, typename T2, typename ARG1, typename ARG2>
+static int touches(const ARG1 &arg1, const ARG2 &arg2) {
+	T1 geom1{};
+	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
+	if (result < 0)
+		return result;
+
+	T2 geom2{};
+	result = convert_from_godot_type_to_boost_type(arg2, geom2);
+	if (result < 0)
+		return result;
+
+	result = static_cast<int>(bg::touches(geom1, geom2));
+
+	return result;
+}
+
+template <typename T1, typename T2, typename ARG1, typename ARG2>
+static Array union_(const ARG1 &arg1, const ARG2 &arg2) {
+	T1 geom1{};
+	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
+	if (result < 0)
+		return Array();
+
+	T2 geom2{};
+	result = convert_from_godot_type_to_boost_type(arg2, geom2);
+	if (result < 0)
+		return Array();
+
+	std::list<T1> collection;
+	bg::union_(geom1, geom2, collection);
+
+	Array output;
+
+	BOOST_FOREACH(T1 const &g, collection) {
+		ARG1 out_i;
+		result = convert_from_boost_type_to_godot_type(g, out_i);
+		if (result < 0)
+			continue;
+
+		output.append(out_i);
+    }
+
+	return output;
+}
+
+template <typename T, typename ARG>
+static ARG unique(const ARG &arg) {
+	T geom{};
+	scalar_t result = convert_from_godot_type_to_boost_type(arg, geom);
+	if (result < 0)
+		return ARG();
+
+	bg::unique(geom);
+
+	ARG output;
+	result = convert_from_boost_type_to_godot_type(geom, output);
+	if (result < 0)
+		return ARG();
+
+	return output;
+}
+
+template <typename T1, typename T2, bool B = true, typename ARG1, typename ARG2>
+static int within(const ARG1 &arg1, const ARG2 &arg2, bool left_to_right) {
+	T1 geom1{};
+	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
+	if (result < 0)
+		return result;
+
+	T2 geom2{};
+	result = convert_from_godot_type_to_boost_type(arg2, geom2);
+	if (result < 0)
+		return result;
+
+	if constexpr (B) {
+		result = left_to_right ? static_cast<int>(bg::within(geom1, geom2)) :
+			static_cast<int>(bg::within(geom2, geom1));
+	} else {
+		result = left_to_right ? static_cast<int>(bg::within(geom1, geom2)) : -1;
+	}
+
+	return result;
+}
+
+} // namespace GDBlasGeometry
+
+} // godot
 
 GDBlasGeometry::scalar_t GDBlasGeometry::area(const Array &array) {
 	return area<polygon_t>(array);
@@ -279,33 +840,6 @@ Vector2 GDBlasGeometry::centroid(const Array &array) {
 	return Vector2(bg::get<0>(c), bg::get<1>(c));
 }
 
-template <typename T1, typename T2, typename ARG1, typename ARG2>
-static PackedVector2Array GDBlasGeometry::closest_points(const ARG1 &arg1, const ARG2 &arg2, bool left_to_right) {
-	T1 geom1{};
-
-	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
-	if (result < 0)
-		return Array();
-
-	T2 geom2{};
-	result = convert_from_godot_type_to_boost_type(arg2, geom2);
-	if (result < 0)
-		return Array();
-
-	segment_t seg{};
-
-	if (left_to_right)
-		bg::closest_points(geom1, geom2, seg);
-	else
-		bg::closest_points(geom2, geom1, seg);
-
-	Array output;
-	output.append(Vector2(bg::get<0, 0>(seg), bg::get<0, 1>(seg)));
-	output.append(Vector2(bg::get<1, 0>(seg), bg::get<1, 1>(seg)));
-
-	return output;
-}
-
 PackedVector2Array GDBlasGeometry::closest_points(const Array &geom1, const Array &geom2, bool left_to_right) {
 	return closest_points<polygon_t, polygon_t>(geom1, geom2, left_to_right);
 }
@@ -328,25 +862,6 @@ PackedVector2Array GDBlasGeometry::closest_points(const PackedVector2Array &geom
 	return closest_points<line_t, point_t>(geom1, geom2, left_to_right);
 }
 
-template <typename T, typename ARG>
-static PackedVector2Array GDBlasGeometry::convex_hull(const ARG &arg) {
-	T geom{};
-
-	int result = convert_from_godot_type_to_boost_type(arg, geom);
-	if (result < 0)
-		return PackedVector2Array();
-
-	ring_t hull{};
-	bg::convex_hull(geom, hull);
-
-	PackedVector2Array output;
-	result = convert_from_boost_type_to_godot_type(hull, output);
-	if (result < 0)
-		return PackedVector2Array();
-
-	return output;
-}
-
 PackedVector2Array GDBlasGeometry::convex_hull(const Array &array) {
 	return convex_hull<polygon_t>(array);
 }
@@ -358,24 +873,6 @@ PackedVector2Array GDBlasGeometry::convex_hull(const PackedVector2Array &array) 
 	return convex_hull<line_t>(array);
 }
 
-template <typename T, typename ARG>
-static ARG GDBlasGeometry::correct(const ARG &arg) {
-	T geom{};
-
-	int result = convert_from_godot_type_to_boost_type(arg, geom);
-	if (result < 0)
-		return ARG();
-
-	bg::correct(geom);
-
-	ARG output;
-	result = convert_from_boost_type_to_godot_type(geom, output);
-	if (result < 0)
-		return ARG();
-
-	return output;
-}
-
 Array GDBlasGeometry::correct(const Array &array) {
 	return correct<polygon_t>(array);
 }
@@ -385,27 +882,6 @@ PackedVector2Array GDBlasGeometry::correct(const PackedVector2Array &array) {
 		return correct<ring_t>(array);
 
 	return correct<line_t>(array);
-}
-
-template <typename T1, typename T2, bool B = true, typename ARG1, typename ARG2>
-static int GDBlasGeometry::covered_by(const ARG1 &geom1, const ARG2 &geom2, bool left_to_right) {
-	T1 g1{};
-	int result = convert_from_godot_type_to_boost_type(geom1, g1);
-	if (result < 0)
-		return result;
-
-	T2 g2{};
-	result = convert_from_godot_type_to_boost_type(geom2, g2);
-	if (result < 0)
-		return result;
-
-	if constexpr (B) {
-		result = static_cast<int>(left_to_right ? bg::covered_by(g1, g2) : bg::covered_by(g2, g1));
-	} else {
-		result = static_cast<int>(left_to_right ? bg::covered_by(g1, g2) : -1);
-	}
-
-	return result;
 }
 
 int GDBlasGeometry::covered_by(const Array &geom1, const Array &geom2, bool left_to_right) {
@@ -448,23 +924,6 @@ int GDBlasGeometry::covered_by(const PackedVector2Array &geom1, const Vector2 &g
 	return covered_by<point_t, line_t, false>(geom2, geom1, !left_to_right);
 }
 
-template <typename T1, typename T2, typename ARG1, typename ARG2>
-static int GDBlasGeometry::crosses(const ARG1 &arg1, const ARG2 &arg2) {
-	T1 geom1{};
-	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
-	if (result < 0)
-		return result;
-
-	T2 geom2{};
-	result = convert_from_godot_type_to_boost_type(arg2, geom2);
-	if (result < 0)
-		return result;
-
-	result = static_cast<int>(bg::crosses(geom1, geom2));
-
-	return result;
-}
-
 int GDBlasGeometry::crosses(const Array &geom1, const Array &geom2) {
 	return crosses<polygon_t, polygon_t>(geom1, geom2);
 }
@@ -496,24 +955,6 @@ int GDBlasGeometry::crosses(const PackedVector2Array &geom1, const PackedVector2
 	return -1;
 }
 
-template <typename T, typename ARG>
-static ARG GDBlasGeometry::densify(const ARG &arg, scalar_t max_distance) {
-	T geom{};
-	int result = convert_from_godot_type_to_boost_type(arg, geom);
-	if (result < 0)
-		return ARG();
-
-	T output_geom{};
-	bg::densify(geom, output_geom, max_distance);
-
-	ARG output;
-	result = convert_from_boost_type_to_godot_type(output_geom, output);
-	if (result < 0)
-		return ARG();
-
-	return output;
-}
-
 Array GDBlasGeometry::densify(const Array &geom, scalar_t max_distance) {
 	return densify<polygon_t>(geom, max_distance);
 }
@@ -523,40 +964,6 @@ PackedVector2Array GDBlasGeometry::densify(const PackedVector2Array &geom, scala
 		return densify<ring_t>(geom, max_distance);
 
 	return densify<line_t>(geom, max_distance);
-}
-
-template <typename T1, typename T2, bool B = true, typename ARG1, typename ARG2>
-static Array GDBlasGeometry::difference(const ARG1 &arg1, const ARG2 &arg2, bool left_to_right) {
-	T1 geom1{};
-	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
-	if (result < 0)
-		return Array();
-
-	T2 geom2{};
-	result = convert_from_godot_type_to_boost_type(arg2, geom2);
-	if (result < 0)
-		return Array();
-
-	std::list<T1> collection;
-
-	if constexpr (B) {
-		left_to_right ? bg::difference(geom1, geom2, collection) : bg::difference(geom2, geom1, collection);
-	} else {
-		left_to_right ? bg::difference(geom1, geom2, collection) : (void) 0;
-	}
-
-	Array output;
-
-	BOOST_FOREACH(T1 const &g, collection) {
-		ARG1 out_i;
-		result = convert_from_boost_type_to_godot_type(g, out_i);
-		if (result < 0)
-			continue;
-
-		output.append(out_i);
-    }
-
-	return output;
 }
 
 Array GDBlasGeometry::difference(const Array &geom1, const Array &geom2, bool left_to_right) {
@@ -588,21 +995,6 @@ Array GDBlasGeometry::difference(const PackedVector2Array &geom1, const PackedVe
 	return Array();
 }
 
-template <typename T1, typename T2, typename ARG1, typename ARG2>
-static GDBlasGeometry::scalar_t GDBlasGeometry::discrete_frechet_distance(const ARG1 &arg1, const ARG2 &arg2) {
-	T1 geom1{};
-	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
-	if (result < 0)
-		return std::nan("nan");
-
-	T2 geom2{};
-	result = convert_from_godot_type_to_boost_type(arg2, geom2);
-	if (result < 0)
-		return std::nan("nan");
-
-	return bg::discrete_frechet_distance(geom1, geom2);
-}
-
 GDBlasGeometry::scalar_t GDBlasGeometry::discrete_frechet_distance(const PackedVector2Array &geom1, const PackedVector2Array &geom2) {
 	if (is_vector2_array_ring(geom1) || is_vector2_array_ring(geom2))
 		return std::nan("nan");
@@ -610,40 +1002,8 @@ GDBlasGeometry::scalar_t GDBlasGeometry::discrete_frechet_distance(const PackedV
 	return discrete_frechet_distance<line_t, line_t>(geom1, geom2);
 }
 
-template <typename T1, typename T2, typename ARG1, typename ARG2>
-static GDBlasGeometry::scalar_t GDBlasGeometry::discrete_hausdorff_distance(const ARG1 &arg1, const ARG2 &arg2) {
-	T1 geom1{};
-	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
-	if (result < 0)
-		return std::nan("nan");
-
-	T2 geom2{};
-	result = convert_from_godot_type_to_boost_type(arg2, geom2);
-	if (result < 0)
-		return std::nan("nan");
-
-	return bg::discrete_hausdorff_distance(geom1, geom2);
-}
-
 GDBlasGeometry::scalar_t GDBlasGeometry::discrete_hausdorff_distance(const PackedVector2Array &geom1, const PackedVector2Array &geom2) {
 	return discrete_hausdorff_distance<line_t, line_t>(geom1, geom2);
-}
-
-template <typename T1, typename T2, typename ARG1, typename ARG2>
-static int GDBlasGeometry::disjoint(const ARG1 &arg1, const ARG2 &arg2) {
-	T1 geom1{};
-	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
-	if (result < 0)
-		return result;
-
-	T2 geom2{};
-	result = convert_from_godot_type_to_boost_type(arg2, geom2);
-	if (result < 0)
-		return result;
-
-	result = static_cast<int>(bg::disjoint(geom1, geom2));
-
-	return result;
 }
 
 int GDBlasGeometry::disjoint(const Array &geom1, const Array &geom2) {
@@ -688,24 +1048,6 @@ int GDBlasGeometry::disjoint(const PackedVector2Array &geom1, const Vector2 &geo
 	return disjoint<line_t, point_t>(geom1, geom2);
 }
 
-template <typename T1, typename T2, typename ARG1, typename ARG2>
-static GDBlasGeometry::scalar_t GDBlasGeometry::distance(const ARG1 &arg1, const ARG2 &arg2, bool comparable) {
-	T1 geom1{};
-	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
-	if (result < 0)
-		return result;
-
-	T2 geom2{};
-	result = convert_from_godot_type_to_boost_type(arg2, geom2);
-	if (result < 0)
-		return result;
-
-	if (comparable)
-		return bg::comparable_distance(geom1, geom2);
-
-	return bg::distance(geom1, geom2);
-}
-
 GDBlasGeometry::scalar_t GDBlasGeometry::distance(const Array &geom1, const Array &geom2, bool comparable) {
 	return distance<polygon_t, polygon_t>(geom1, geom2, comparable);
 }
@@ -748,24 +1090,6 @@ GDBlasGeometry::scalar_t GDBlasGeometry::distance(const PackedVector2Array &geom
 	return distance<line_t, point_t>(geom1, geom2, comparable);
 }
 
-template <typename T, typename ARG>
-static Rect2 GDBlasGeometry::envelope(const ARG &arg) {
-	T geom{};
-	int result = convert_from_godot_type_to_boost_type(arg, geom);
-	if (result < 0)
-		return GDBLAS_NaN_RECT;
-
-	box_t output{};
-	bg::envelope(geom, output);
-
-	Rect2 rect;
-	result = convert_from_boost_type_to_godot_type(output, rect);
-	if (result < 0)
-		return GDBLAS_NaN_RECT;
-
-	return rect;
-}
-
 Rect2 GDBlasGeometry::envelope(const Array &geom) {
 	return envelope<polygon_t>(geom);
 }
@@ -775,23 +1099,6 @@ Rect2 GDBlasGeometry::envelope(const PackedVector2Array &geom) {
 		return envelope<ring_t>(geom);
 
 	return envelope<line_t>(geom);
-}
-
-template <typename T, typename ARG>
-static int GDBlasGeometry::equals(const ARG &arg1, const ARG &arg2) {
-	T geom1{};
-	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
-	if (result < 0)
-		return result;
-
-	T geom2{};
-	result = convert_from_godot_type_to_boost_type(arg2, geom2);
-	if (result < 0)
-		return result;
-
-	result = static_cast<int>(bg::equals(geom1, geom2));
-
-	return result;
 }
 
 int GDBlasGeometry::equals(const Array &geom1, const Array &geom2) {
@@ -812,35 +1119,6 @@ int GDBlasGeometry::equals(const PackedVector2Array &geom1, const PackedVector2A
 	}
 
 	return -1;
-}
-
-template <typename T1, typename T2, typename ARG1, typename ARG2>
-static Array GDBlasGeometry::intersection(const ARG1 &arg1, const ARG2 &arg2) {
-	T1 geom1{};
-	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
-	if (result < 0)
-		return Array();
-
-	T2 geom2{};
-	result = convert_from_godot_type_to_boost_type(arg2, geom2);
-	if (result < 0)
-		return Array();
-
-	std::deque<T2> collection;
-	bg::intersection(geom1, geom2, collection);
-
-	Array output;
-
-	BOOST_FOREACH(T2 const &g, collection) {
-		ARG2 out_i;
-		result = convert_from_boost_type_to_godot_type(g, out_i);
-		if (result < 0)
-			continue;
-
-		output.append(out_i);
-    }
-
-	return output;
 }
 
 Array GDBlasGeometry::intersection(const Array &geom1, const Array &geom2) {
@@ -868,35 +1146,6 @@ Array GDBlasGeometry::intersection(const PackedVector2Array &geom1, const Packed
 	}
 
 	return Array();
-}
-
-template <typename T, typename ARG>
-static int GDBlasGeometry::intersects(const ARG &arg) {
-	T geom{};
-	int result = convert_from_godot_type_to_boost_type(arg, geom);
-	if (result < 0)
-		return result;
-
-	result = static_cast<int>(bg::intersects(geom));
-
-	return result;
-}
-
-template <typename T1, typename T2, typename ARG1, typename ARG2>
-static int GDBlasGeometry::intersects(const ARG1 &arg1, const ARG2 &arg2) {
-	T1 geom1{};
-	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
-	if (result < 0)
-		return result;
-
-	T2 geom2{};
-	result = convert_from_godot_type_to_boost_type(arg2, geom2);
-	if (result < 0)
-		return result;
-
-	result = static_cast<int>(bg::intersects(geom1, geom2));
-
-	return result;
 }
 
 int GDBlasGeometry::intersects(const Array &geom1, const Array &geom2) {
@@ -941,18 +1190,6 @@ int GDBlasGeometry::intersects(const PackedVector2Array &geom1, const PackedVect
 	return -1;
 }
 
-template <typename T, typename ARG>
-static int GDBlasGeometry::is_simple(const ARG &arg) {
-	T geom{};
-	int result = convert_from_godot_type_to_boost_type(arg, geom);
-	if (result < 0)
-		return result;
-
-	result = static_cast<int>(bg::is_simple(geom));
-
-	return result;
-}
-
 int GDBlasGeometry::is_simple(const Array &geom) {
 	return is_simple<polygon_t>(geom);
 }
@@ -962,19 +1199,6 @@ int GDBlasGeometry::is_simple(const PackedVector2Array &geom) {
 		return is_simple<ring_t>(geom);
 
 	return is_simple<line_t>(geom);
-}
-
-template <typename T, typename ARG>
-static int GDBlasGeometry::is_valid(const ARG &arg) {
-	T geom{};
-	int result = convert_from_godot_type_to_boost_type(arg, geom);
-	if (result < 0)
-		return result;
-
-	bg::validity_failure_type failure;
-	bg::is_valid(geom, failure);
-
-	return static_cast<int>(failure);
 }
 
 int GDBlasGeometry::is_valid(const Array &geom) {
@@ -988,16 +1212,6 @@ int GDBlasGeometry::is_valid(const PackedVector2Array &geom) {
 	return is_valid<line_t>(geom);
 }
 
-template <typename T, typename ARG>
-static GDBlasGeometry::scalar_t GDBlasGeometry::length(const ARG &arg) {
-	T geom{};
-	scalar_t result = convert_from_godot_type_to_boost_type(arg, geom);
-	if (result < 0)
-		return std::nan("nan");
-
-	return bg::length(geom);
-}
-
 GDBlasGeometry::scalar_t GDBlasGeometry::length(const Array &geom) {
 	return length<polygon_t>(geom);
 }
@@ -1007,23 +1221,6 @@ GDBlasGeometry::scalar_t GDBlasGeometry::length(const PackedVector2Array &geom) 
 		return length<ring_t>(geom);
 
 	return length<line_t>(geom);
-}
-
-template <typename T1, typename T2, typename ARG1, typename ARG2>
-static int GDBlasGeometry::overlaps(const ARG1 &arg1, const ARG2 &arg2) {
-	T1 geom1{};
-	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
-	if (result < 0)
-		return result;
-
-	T2 geom2{};
-	result = convert_from_godot_type_to_boost_type(arg2, geom2);
-	if (result < 0)
-		return result;
-
-	result = static_cast<int>(bg::overlaps(geom1, geom2));
-
-	return result;
 }
 
 int GDBlasGeometry::overlaps(const Array &geom1, const Array &geom2) {
@@ -1041,16 +1238,6 @@ int GDBlasGeometry::overlaps(const PackedVector2Array &geom1, const PackedVector
 	return overlaps<line_t, line_t>(geom1, geom2);
 }
 
-template <typename T, typename ARG>
-static GDBlasGeometry::scalar_t GDBlasGeometry::perimeter(const ARG &arg) {
-	T geom{};
-	scalar_t result = convert_from_godot_type_to_boost_type(arg, geom);
-	if (result < 0)
-		return std::nan("nan");
-
-	return bg::perimeter(geom);
-}
-
 GDBlasGeometry::scalar_t GDBlasGeometry::perimeter(const Array &geom) {
 	return perimeter<polygon_t>(geom);
 }
@@ -1060,25 +1247,6 @@ GDBlasGeometry::scalar_t GDBlasGeometry::perimeter(const PackedVector2Array &geo
 		return perimeter<ring_t>(geom);
 
 	return perimeter<line_t>(geom);
-}
-
-template <typename T1, typename T2, typename ARG1, typename ARG2>
-static String GDBlasGeometry::relation(const ARG1 &arg1, const ARG2 &arg2, bool left_to_right) {
-	T1 geom1{};
-	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
-	if (result < 0)
-		return String();
-
-	T2 geom2{};
-	result = convert_from_godot_type_to_boost_type(arg2, geom2);
-	if (result < 0)
-		return String();
-
-	bg::de9im::matrix matrix = left_to_right ? bg::relation(geom1, geom2) : bg::relation(geom2, geom1);
-
-	String output(matrix.str().c_str());
-
-	return output;
 }
 
 String GDBlasGeometry::relation(const Array &geom1, const Array &geom2, bool left_to_right) {
@@ -1123,23 +1291,6 @@ String GDBlasGeometry::relation(const PackedVector2Array &geom1, const Vector2 &
 	return relation<line_t, point_t>(geom1, geom2, left_to_right);
 }
 
-template <typename T, typename ARG>
-static ARG GDBlasGeometry::reverse(const ARG &arg) {
-	T geom{};
-	scalar_t result = convert_from_godot_type_to_boost_type(arg, geom);
-	if (result < 0)
-		return ARG();
-
-	bg::reverse(geom);
-
-	ARG output;
-	result = convert_from_boost_type_to_godot_type(geom, output);
-	if (result < 0)
-		return ARG();
-
-	return output;
-}
-
 Array GDBlasGeometry::reverse(const Array &geom) {
 	return reverse<polygon_t>(geom);
 }
@@ -1151,24 +1302,6 @@ PackedVector2Array GDBlasGeometry::reverse(const PackedVector2Array &geom) {
 	return reverse<line_t>(geom);
 }
 
-template <typename T, typename ARG>
-static ARG GDBlasGeometry::simplify(const ARG &arg, scalar_t max_distance) {
-	T geom{};
-	int result = convert_from_godot_type_to_boost_type(arg, geom);
-	if (result < 0)
-		return ARG();
-
-	T output_geom{};
-	bg::simplify(geom, output_geom, max_distance);
-
-	ARG output;
-	result = convert_from_boost_type_to_godot_type(output_geom, output);
-	if (result < 0)
-		return ARG();
-
-	return output;
-}
-
 Array GDBlasGeometry::simplify(const Array &geom, scalar_t max_distance) {
 	return simplify<polygon_t>(geom, max_distance);
 }
@@ -1178,36 +1311,6 @@ PackedVector2Array GDBlasGeometry::simplify(const PackedVector2Array &geom, scal
 		return simplify<ring_t>(geom, max_distance);
 
 	return simplify<line_t>(geom, max_distance);
-}
-
-template <typename T1, typename T2, typename ARG1, typename ARG2>
-static Array GDBlasGeometry::sym_difference(const ARG1 &arg1, const ARG2 &arg2, bool left_to_right) {
-	T1 geom1{};
-	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
-	if (result < 0)
-		return Array();
-
-	T2 geom2{};
-	result = convert_from_godot_type_to_boost_type(arg2, geom2);
-	if (result < 0)
-		return Array();
-
-	std::list<T1> collection;
-	left_to_right ? bg::sym_difference(geom1, geom2, collection) :
-		bg::sym_difference(geom2, geom1, collection);
-
-	Array output;
-
-	BOOST_FOREACH(T1 const &g, collection) {
-		ARG1 out_i;
-		result = convert_from_boost_type_to_godot_type(g, out_i);
-		if (result < 0)
-			continue;
-
-		output.append(out_i);
-    }
-
-	return output;
 }
 
 Array GDBlasGeometry::sym_difference(const Array &geom1, const Array &geom2, bool left_to_right) {
@@ -1228,18 +1331,6 @@ Array GDBlasGeometry::sym_difference(const PackedVector2Array &geom1, const Pack
 	return sym_difference<line_t, line_t>(geom1, geom2, left_to_right);
 }
 
-template <typename T, typename ARG>
-static int GDBlasGeometry::touches(const ARG &arg) {
-	T geom{};
-	scalar_t result = convert_from_godot_type_to_boost_type(arg, geom);
-	if (result < 0)
-		return result;
-
-	result = static_cast<int>(bg::touches(geom));
-
-	return result;
-}
-
 int GDBlasGeometry::touches(const Array &geom) {
 	return touches<polygon_t>(geom);
 }
@@ -1249,23 +1340,6 @@ int GDBlasGeometry::touches(const PackedVector2Array &geom) {
 		return touches<ring_t>(geom);
 
 	return touches<line_t>(geom);
-}
-
-template <typename T1, typename T2, typename ARG1, typename ARG2>
-static int GDBlasGeometry::touches(const ARG1 &arg1, const ARG2 &arg2) {
-	T1 geom1{};
-	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
-	if (result < 0)
-		return result;
-
-	T2 geom2{};
-	result = convert_from_godot_type_to_boost_type(arg2, geom2);
-	if (result < 0)
-		return result;
-
-	result = static_cast<int>(bg::touches(geom1, geom2));
-
-	return result;
 }
 
 int GDBlasGeometry::touches(const Array &geom1, const Array &geom2) {
@@ -1299,35 +1373,6 @@ int GDBlasGeometry::touches(const PackedVector2Array &geom1, const PackedVector2
 	return -1;
 }
 
-template <typename T1, typename T2, typename ARG1, typename ARG2>
-static Array GDBlasGeometry::union_(const ARG1 &arg1, const ARG2 &arg2) {
-	T1 geom1{};
-	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
-	if (result < 0)
-		return Array();
-
-	T2 geom2{};
-	result = convert_from_godot_type_to_boost_type(arg2, geom2);
-	if (result < 0)
-		return Array();
-
-	std::list<T1> collection;
-	bg::union_(geom1, geom2, collection);
-
-	Array output;
-
-	BOOST_FOREACH(T1 const &g, collection) {
-		ARG1 out_i;
-		result = convert_from_boost_type_to_godot_type(g, out_i);
-		if (result < 0)
-			continue;
-
-		output.append(out_i);
-    }
-
-	return output;
-}
-
 Array GDBlasGeometry::union_(const Array &geom1, const Array &geom2) {
 	return union_<polygon_t, polygon_t>(geom1, geom2);
 }
@@ -1355,23 +1400,6 @@ Array GDBlasGeometry::union_(const PackedVector2Array &geom1, const PackedVector
 	return Array();
 }
 
-template <typename T, typename ARG>
-static ARG GDBlasGeometry::unique(const ARG &arg) {
-	T geom{};
-	scalar_t result = convert_from_godot_type_to_boost_type(arg, geom);
-	if (result < 0)
-		return ARG();
-
-	bg::unique(geom);
-
-	ARG output;
-	result = convert_from_boost_type_to_godot_type(geom, output);
-	if (result < 0)
-		return ARG();
-
-	return output;
-}
-
 Array GDBlasGeometry::unique(const Array &geom) {
 	return unique<polygon_t>(geom);
 }
@@ -1381,28 +1409,6 @@ PackedVector2Array GDBlasGeometry::unique(const PackedVector2Array &geom) {
 		return unique<ring_t>(geom);
 
 	return unique<line_t>(geom);
-}
-
-template <typename T1, typename T2, bool B = true, typename ARG1, typename ARG2>
-static int GDBlasGeometry::within(const ARG1 &arg1, const ARG2 &arg2, bool left_to_right) {
-	T1 geom1{};
-	int result = convert_from_godot_type_to_boost_type(arg1, geom1);
-	if (result < 0)
-		return result;
-
-	T2 geom2{};
-	result = convert_from_godot_type_to_boost_type(arg2, geom2);
-	if (result < 0)
-		return result;
-
-	if constexpr (B) {
-		result = left_to_right ? static_cast<int>(bg::within(geom1, geom2)) :
-			static_cast<int>(bg::within(geom2, geom1));
-	} else {
-		result = left_to_right ? static_cast<int>(bg::within(geom1, geom2)) : -1;
-	}
-
-	return result;
 }
 
 int GDBlasGeometry::within(const Array &geom1, const Array &geom2, bool left_to_right) {

@@ -1,0 +1,10 @@
+--- boost/libs/polygon/include/boost/polygon/detail/boolean_op_45.hpp	2024-07-31 23:46:08.633941157 +0300
++++ boost/libs/polygon/include/boost/polygon/detail/boolean_op_45.hpp.modified	2024-07-31 23:36:42.118430273 +0300
+@@ -816,7 +816,6 @@
+             //the cross point is not on the integer grid and cannot be represented
+             //we must throw an exception
+             std::string msg = "GTL 45 Boolean error, precision insufficient to represent edge intersection coordinate value.";
+-            throw(msg);
+           } else {
+             //note that result of this subtraction is always positive because itr1 is above itr2 in scanline
+             LongUnit halfDelta2 = (LongUnit)((((LongUnit)y1) - y2)/2);
