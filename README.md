@@ -9,6 +9,8 @@ In version `1.4.0`, [BoostC++ Geometry](https://www.boost.org/doc/libs/1_85_0/li
 
 ![Demo3D screenshot](docs/demo3d_screenshot.jpg?raw=true)
 
+https://gist.github.com/user-attachments/assets/aa9c1056-6da8-4c55-9c86-5937d3cd315c
+
 **An example**:
 ```gdscript
 var gbl = GDBlas.new()
@@ -139,7 +141,7 @@ You can check the tests in (demo/GDBlasTest.gd) for their usage.
 Reference counted real or complex matrix object. A real matrix returns enries as a `float` and complex matrix as `Vector2`.
 
 ### Methods
-- `resize(m: Variant, n: int = -1)`: Resizes matrix to m by n if both are integer. `n` is not required if `m` is `Vector2i`. 
+- `resize(m: Variant, n: int = -1)`: Resizes matrix to m by n if both are integer. `n` is not required if `m` is `Vector2i`.
 - `copy()`: Creates a copy of matrix.
 ```gdscript
 var gbl = GDBlas.new()
