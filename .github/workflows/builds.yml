@@ -93,6 +93,13 @@ jobs:
           ./bootstrap.sh
           ./b2 headers
         working-directory: boost
+      - name: Bootstrap patches
+        shell: sh
+        run: |
+          patch -s -p0 < read.patch
+          patch -s -p0 < polygon_45_set_data.patch
+          patch -s -p0 < rational.patch
+          patch -s -p0 < boolean_op_45.patch
       - name: Compile godot-cpp
         shell: sh
         run: |

@@ -1,11 +1,15 @@
 # GDBlas
 This native [Godot](https://github.com/godotengine/godot) extension provides real and complex matrix algebra. It uses data structures and matrix iterators of [Eigen](https://gitlab.com/libeigen/eigen) library, also includes ODE solver based on [ODEINT](https://github.com/headmyshoulder/odeint-v2).
 
+In version `1.4.0`, [BoostC++ Geometry](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/index.html) algorithms are added.
+
 ## Demos
 1. There is a demo project in `demo` directory which includes numerous tests and displacement simulation of a flexible structure. Its mathematical model can be found in my [PhD thesis](https://www.proquest.com/openview/28b57f84e375831a4f1ae27be456ba2d/1?pq-origsite=gscholar&cbl=2026366&diss=y) (Chapter 6).
 2. 3D demo project based on a [Godot example](https://github.com/godotengine/godot-demo-projects/releases/download/4.2-31d1c0c/3d_occlusion_culling_mesh_lod.zip). It displays filtered versions of the texture in `Viewport` as shown below.
 
-![Demo3D screenshot](docs/demo3d_screenshot.png?raw=true)
+![Demo3D screenshot](docs/demo3d_screenshot.jpg?raw=true)
+
+https://gist.github.com/user-attachments/assets/aa9c1056-6da8-4c55-9c86-5937d3cd315c
 
 **An example**:
 ```gdscript
@@ -62,12 +66,82 @@ var B = gbl.new_mat(dim)
 var pack: PackedByteArray = gbl.mat_to_image_data([ R, G, B ])
 # An RGB8 formatted Image object can be created by using the data in 'pack'
 ```
+- `area(p_polygon: PackedVector2Array)`: Calculates the area of polygon. Points must be ordered in clockwise (CW) direction.
+
+### Boost Geometry
+
+#### Data structures
+
+List of Boost Geometry [data structures](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/models.html) and their representations in GDScript to be used by `GDBlas`'s bindings of Boost Geometry [algorithms](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms.html).
+
+- `model::point` &equiv; `Vector2`
+- `model::linestring` &equiv; `PackedVector2Array`
+- `model::ring` &equiv; `PackedVector2Array` if the first and last values of the array are equal.
+- `model::polygon` &equiv; `Array` of `PackedVector2Array` where the first entry represents the outer ring and the other entries represent inner rings.
+  - `ring_type model::polygon::outer` &equiv; `PackedVector2Array` where the first and last values of the array are equal.
+  - `ring_type model::polygon::inners[i]` &equiv; `PackedVector2Array` where the first and last values of the array are equal.
+- `model::box` &equiv; `Rect2`
+
+#### Algorithms
+
+- [`area`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/area.html)
+- [`buffer`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/buffer.html)
+- [`centroid`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/centroid.html)
+- [`clear`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/clear.html)
+- [`closest_points`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/closest_points.html)
+- [`convert`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/convert.html)
+- [`convex_hull`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/convex_hull.html)
+- [`correct`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/correct.html)
+- [`covered_by`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/covered_by.html)
+- [`crosses`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/crosses.html)
+- [`densify`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/densify.html)
+- [`difference`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/difference.html)
+- [`discrete_frechet_distance`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/discrete_frechet_distance.html)
+- [`discrete_hausdorff_distance`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/discrete_hausdorff_distance.html)
+- [`disjoint`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/disjoint.html)
+- [`distance`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/distance.html)
+- [`envelope`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/envelope.html)
+- [`equals`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/equals.html)
+- [`intersection`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/intersection.html)
+- [`intersects`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/intersects.html)
+- [`is_empty`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/is_empty.html)
+- [`is_simple`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/is_simple.html)
+- [`is_valid`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/is_valid.html)
+- [`length`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/length.html)
+- [`overlaps`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/overlaps.html)
+- [`perimeter`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/perimeter.html)
+- [`relation`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/relation.html)
+- [`reverse`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/reverse.html)
+- [`simplify`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/simplify.html)
+- [`sym_difference`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/sym_difference.html)
+- [`touches`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/touches.html)
+- [`transform`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/transform.html)
+- [`union_`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/union_.html)
+- [`unique`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/unique.html)
+- [`within`](https://www.boost.org/doc/libs/1_85_0/libs/geometry/doc/html/geometry/reference/algorithms/within.html)
+
+#### Return types and errors
+
+The algorithms above may not be used all combinations of `model`s. In such cases and error message is emitted and function returns an invalid value. The map of return types and invalid values are given below.
+
+- `bool` return types: Returns `int`. `1` = `true`, `0` = `false`, negative value on error.
+- `int` return types: Returns `int`, negative value on error.
+- `double` return types: Returns `float`, `NaN` on error.
+- `model::polygon` return types: Returns `Array` of `PackedVector2Array`, empty `Array` on error.
+- `model::ring` return types: Returns `PackedVector2Array`, empty `PackedVector2Array` on error.
+- `model::line` return types: Returns `PackedVector2Array`, empty `PackedVector2Array` on error.
+- `model::point` return types: Returns `Vector2`, `Vector2(NaN, NaN)` on error.
+- `model::box` return types: Returns `Rect2`, `Rect2(NaN, NaN, NaN, NaN)` on error.
+
+#### Examples
+
+You can check the tests in [demo/GDBlasTest.gd](./demo/GDBlasTest.gd) for learning how to use.
 
 ## GDBlasMat
 Reference counted real or complex matrix object. A real matrix returns enries as a `float` and complex matrix as `Vector2`.
 
 ### Methods
-- `resize(m: Variant, n: int = -1)`: Resizes matrix to m by n if both are integer. `n` is not required if `m` is `Vector2i`. 
+- `resize(m: Variant, n: int = -1)`: Resizes matrix to m by n if both are integer. `n` is not required if `m` is `Vector2i`.
 - `copy()`: Creates a copy of matrix.
 ```gdscript
 var gbl = GDBlas.new()
@@ -150,8 +224,8 @@ will print
 - `mean(axis = -1)`: Calculates mean of matrix entries on given axis. `axis=0`: mean over rows, `axis=1`: mean of cols, `axis=-1`: (default) mean of all entries. Returns a `GDBlasMat` object containing the means.
 - `min(axis = -1)`: Finds the minimum of matrix entries on given axis. `axis=0`: min over rows, `axis=1`: min of cols, `axis=-1`: (default) min of all entries. Returns a `GDBlasMat` object containing the minimums.
 - `max(axis = -1)`: Finds the maximum of matrix entries on given axis. `axis=0`: max over rows, `axis=1`: max of cols, `axis=-1`: (default) max of all entries. Returns a `GDBlasMat` object containing the maximums.
-- `argmin(axis = -1)`: Finds the index of minimum of matrix entries on given axis. `axis=0`: min over rows, `axis=1`: min of cols, `axis=-1`: (default) min of all entries. Returns an `Array` of `Vector2i` containing the index o minimums.
-- `argmax(axis = -1)`: Finds the index of maximum of matrix entries on given axis. `axis=0`: max over rows, `axis=1`: max of cols, `axis=-1`: (default) max of all entries. Returns an `Array` of `Vector2i` containing the index o minimums.
+- `argmin(axis = -1)`: Finds the index of minimum of matrix entries on given axis. `axis=0`: min over rows, `axis=1`: min of cols, `axis=-1`: (default) min of all entries. Returns an `Array` of `Vector2i` containing the indices of minimums.
+- `argmax(axis = -1)`: Finds the index of maximum of matrix entries on given axis. `axis=0`: max over rows, `axis=1`: max of cols, `axis=-1`: (default) max of all entries. Returns an `Array` of `Vector2i` containing the indices of minimums.
 - `norm(norm_type)`: Computes $L1$, $L_{\infty}$ or Frobenius norm of matrix. Accepted arguments are `GDBlas.NORM_1`, `GDBlas.NORM_INF` or `GDBlas.NORM_FRO`. Returns `float`.
 - `eval_ode(p_f: Callable, p_dt: float, p_max_step: float = 1e-2)`: Evaluates the ordinary differential equation (ODE) defined in `p_f` for an amount of time given by `p_dt` starting from the current value of matrix. It can be called on only real n by 1 matrices (equivalent to a column vector). Returns the step count (how many times the ODE function is evaluated) or a negative value on error.
 ```gdscript
@@ -211,6 +285,14 @@ func some_func():
 **NOTE**: If the matrix is complex, first argument of callable is a `Vector2` and its return type must also be `Vector2`.
 
 - `sin()`
+
+```gdscript
+var gbl = GDBlas.new()
+var vec = gbl.linspace(-0.5, 0.5, 256)
+vec.mul(2 * PI)
+vec.sin() # Calculate sine of vec and write in place.
+```
+
 - `cos()`
 - `abs()`
 - `exp()`

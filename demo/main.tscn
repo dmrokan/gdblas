@@ -15,7 +15,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="GDBlasTest" type="Node" parent="."]
+[node name="GDBlasTest" type="Node2D" parent="."]
 script = ExtResource("2_d7iog")
 
 [node name="Node2D" type="Node2D" parent="."]

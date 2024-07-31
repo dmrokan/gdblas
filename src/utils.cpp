@@ -5,7 +5,6 @@
 
 #include <godot_cpp/variant/utility_functions.hpp>
 
-
 static constexpr size_t MAX_MESSAGE_SIZE = 512;
 
 void *gdblas_alloc(size_t s) {
@@ -42,17 +41,21 @@ void gdblas_error(const char *fmt, ...) {
 }
 
 void gdblas_warn(const char *fmt, ...) {
+#ifdef GDBLAS_DEBUG_PRINT
 	fprintf(stderr, "WRN: ");
 	va_list args;
 	va_start(args, fmt);
 	vfprintf(stderr, fmt, args);
 	va_end(args);
+#endif
 }
 
 void gdblas_debug(const char *fmt, ...) {
+#ifdef GDBLAS_DEBUG_PRINT
 	fprintf(stdout, "DBG: ");
 	va_list args;
 	va_start(args, fmt);
 	vfprintf(stdout, fmt, args);
 	va_end(args);
+#endif
 }

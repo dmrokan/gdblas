@@ -1,0 +1,29 @@
+--- boost/libs/geometry/include/boost/geometry/io/wkt/read.hpp	2024-07-31 23:49:44.507272188 +0300
++++ boost/libs/geometry/include/boost/geometry/io/wkt/read.hpp.modified	2024-07-31 23:37:17.314648387 +0300
+@@ -137,7 +137,6 @@
+         // Stop at end of tokens, or at "," ot ")"
+         bool finished = (it == end || *it == "," || *it == ")");
+ 
+-        try
+         {
+             // Initialize missing coordinates to default constructor (zero)
+             // OR
+@@ -149,18 +148,6 @@
+                     ? coordinate_type()
+                     : coordinate_cast<coordinate_type>::apply(*it));
+         }
+-        catch(boost::bad_lexical_cast const& blc)
+-        {
+-            BOOST_THROW_EXCEPTION(read_wkt_exception(blc.what(), it, end, wkt));
+-        }
+-        catch(std::exception const& e)
+-        {
+-            BOOST_THROW_EXCEPTION(read_wkt_exception(e.what(), it, end, wkt));
+-        }
+-        catch(...)
+-        {
+-            BOOST_THROW_EXCEPTION(read_wkt_exception("", it, end, wkt));
+-        }
+ 
+         parsing_assigner<Point, Dimension + 1, DimensionCount>::apply(
+                         (finished ? it : ++it), end, point, wkt);
