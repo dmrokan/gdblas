@@ -125,7 +125,6 @@ func _generate_initial_state(gbl):
 	sysx = gbl.new_mat(2 * Nb, 1)
 
 func _generate_system_matrices():
-
 	var gbl = GDBlas.new()
 	var Acont = gbl.new_mat(2 * Nb) # Continuous time state matrix
 	var A = gbl.new_mat(2 * Nb) # Discrete time state matrix

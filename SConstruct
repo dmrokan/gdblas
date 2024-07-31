@@ -55,9 +55,16 @@ sources = Glob("src/*.cpp")
 
 DISABLE_GDBLAS_ODE = ARGUMENTS.get('DISABLE_GDBLAS_ODE', 0)
 if int(DISABLE_GDBLAS_ODE) == 0:
-    # Suppress depracated warning for std::iterator in boost::ublas
     env.Append(CPPFLAGS=["-DGDBLAS_WITH_ODE"])
     env.Append(CPPPATH=["boost/"])
+
+DISABLE_GDBLAS_GEOMETRY = ARGUMENTS.get('DISABLE_GDBLAS_GEOMETRY', 0)
+if int(DISABLE_GDBLAS_GEOMETRY) == 0:
+    env.Append(CPPFLAGS=["-DGDBLAS_WITH_GEOMETRY"])
+    env.Append(CPPPATH=["boost/"])
+else:
+    for fn in Glob("src/gdblas_geometry.cpp"):
+        sources.remove(fn)
 
 file = "{}{}{}".format(libname, env["suffix"], env["SHLIBSUFFIX"])
 
