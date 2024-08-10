@@ -66,7 +66,6 @@ var B = gbl.new_mat(dim)
 var pack: PackedByteArray = gbl.mat_to_image_data([ R, G, B ])
 # An RGB8 formatted Image object can be created by using the data in 'pack'
 ```
-- `area(p_polygon: PackedVector2Array)`: Calculates the area of polygon. Points must be ordered in clockwise (CW) direction.
 
 ### Boost Geometry
 
@@ -77,7 +76,7 @@ List of Boost Geometry [data structures](https://www.boost.org/doc/libs/1_85_0/l
 - `model::point` &equiv; `Vector2`
 - `model::linestring` &equiv; `PackedVector2Array`
 - `model::ring` &equiv; `PackedVector2Array` if the first and last values of the array are equal.
-- `model::polygon` &equiv; `Array` of `PackedVector2Array` where the first entry represents the outer ring and the other entries represent inner rings.
+- `model::polygon` &equiv; `Array` of `PackedVector2Array` where the first entry represents the outer ring and the other entries represent inner rings. Inner rings are optional.
   - `ring_type model::polygon::outer` &equiv; `PackedVector2Array` where the first and last values of the array are equal.
   - `ring_type model::polygon::inners[i]` &equiv; `PackedVector2Array` where the first and last values of the array are equal.
 - `model::box` &equiv; `Rect2`

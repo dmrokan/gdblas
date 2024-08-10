@@ -83,17 +83,17 @@ func _draw_filtered_viewport():
 	filtered_view2.set_texture(texture)
 
 func _image_processing_thread():
-	const expected_loop_time: int = round(CAPTURE_PERIOD * 1000.0)
+	const expected_loop_time: int = round(CAPTURE_PERIOD * 1000000.0)
 
 	while _continue_thread:
-		var loop_start = Time.get_ticks_msec()
+		var loop_start = Time.get_ticks_usec()
 
 		_capture_and_process()
 
-		var loop_end = Time.get_ticks_msec()
+		var loop_end = Time.get_ticks_usec()
 		var dt = loop_end - loop_start
-		if dt > 0:
-			OS.delay_msec(dt)
+		if dt < expected_loop_time:
+			OS.delay_usec(expected_loop_time - dt)
 
 func _ready():
 	var _hp_filt = GBL.new_mat(3)
