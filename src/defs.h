@@ -5,9 +5,9 @@
 
 #define GDBLAS_SET_VERSION(a, b, c) (a << 20 | b << 10 | c)
 
-static constexpr uint32_t GDBLAS_VERSION = GDBLAS_SET_VERSION(1, 4, 0);
+static constexpr uint32_t GDBLAS_VERSION = GDBLAS_SET_VERSION(1, 4, 1);
 
-#ifdef GDBLAS_DEBUG_PRINT
+#if defined(GDBLAS_DEBUG_PRINT)
 
 #define GDBLAS_ERROR(...)                                     \
 	do {                                                      \

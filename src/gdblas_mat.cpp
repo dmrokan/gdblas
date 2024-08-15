@@ -1,10 +1,8 @@
 #include "gdblas_mat.h"
 
-#ifdef GDBLAS_WITH_ODE
+#if defined(GDBLAS_WITH_ODE)
 #define BOOST_NO_EXCEPTIONS
 #include <boost/numeric/odeint.hpp>
-void boost::throw_exception(std::exception const & e) {}
-void boost::throw_exception(std::exception const & e, boost::source_location const & loc) {}
 #endif
 
 using namespace godot;
@@ -77,7 +75,7 @@ void GDBlasMat::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("downsample", "p_factor_m", "p_factor_n", "p_filter"),
 						 &GDBlasMat::downsample, DEFVAL(Variant()));
 
-#ifdef GDBLAS_WITH_ODE
+#if defined(GDBLAS_WITH_ODE)
 	ClassDB::bind_method(D_METHOD("eval_ode", "p_f", "p_dt", "p_max_step"), &GDBlasMat::eval_ode,
 						 DEFVAL(1e-2));
 #endif
@@ -1321,7 +1319,7 @@ Variant GDBlasMat::downsample(int p_factor_m, int p_factor_n, Variant p_filter) 
 	return Variant(output);
 }
 
-#ifdef GDBLAS_WITH_ODE
+#if defined(GDBLAS_WITH_ODE)
 Variant GDBlasMat::eval_ode(Callable p_f, double p_dt, double p_max_step) {
 	typedef std::vector<scalar_t> state_type;
 

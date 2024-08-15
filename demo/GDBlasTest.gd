@@ -1,5 +1,7 @@
 extends Node2D
 
+var _has_geometry_funcs: bool = false
+
 func C(real: float, imag: float = 0.0) -> Vector2:
 	return Vector2(real, imag)
 
@@ -125,6 +127,10 @@ func new_mat(m: int, n: int, val = 0, real: bool = true) -> Array:
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
+	var gbl = GDBlas.new()
+	if gbl.has_method("area"):
+		_has_geometry_funcs = true
+
 	test01()
 	test02()
 	test02_1()
@@ -149,38 +155,42 @@ func _ready():
 	test21()
 	test22()
 	test23()
-	test24()
-	test25()
-	test26()
-	test27()
-	test28()
-	test29()
-	test30()
-	test31()
-	test32()
-	test33()
-	test34()
-	test35()
-	test36()
-	test37()
-	test38()
-	test39()
-	test40()
-	test41()
-	test42()
-	test43()
-	test44()
-	test45()
-	test46()
-	test47()
-	test48()
-	test49()
-	test50()
-	test51()
-	test52()
-	test53()
-	test54()
-	test55()
+
+	if _has_geometry_funcs:
+		test24()
+		test25()
+		test26()
+		test27()
+		test28()
+		test29()
+		test30()
+		test31()
+		test32()
+		test33()
+		test34()
+		test35()
+		test36()
+		test37()
+		test38()
+		test39()
+		test40()
+		test41()
+		test42()
+		test43()
+		test44()
+		test45()
+		test46()
+		test47()
+		test48()
+		test49()
+		test50()
+		test51()
+		test52()
+		test53()
+		test54()
+		test55()
+	else:
+		print("Geometry functions are not enabled. Skipping...")
 
 func test01():
 	print("test01")
@@ -1720,5 +1730,6 @@ func _process(delta):
 	pass
 
 func _draw():
-	draw_polygon(_line_buffer[0], _poly_colors)
-	draw_polyline(_line_buffer[0], Color.SADDLE_BROWN, 6)
+	if _has_geometry_funcs:
+		draw_polygon(_line_buffer[0], _poly_colors)
+		draw_polyline(_line_buffer[0], Color.SADDLE_BROWN, 6)

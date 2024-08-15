@@ -332,7 +332,26 @@ cd boost
 You can visit [Boost wiki](https://github.com/boostorg/wiki/wiki) for more information.
 
 **Build extension**
+
+Godot Engine does not use C++ exception handling. It provides `-fno-exceptions` flag to the compiler. However, Boost C++ utilizes `try, catch, throw` statements in many parts of its code base which can be disabled by defining `BOOST_NO_EXCEPTIONS` preprocessor expression. It seems that some parts of `boost::geometry` ignores this preprocessor definition and still adds exception handling related expressions to the compilation units which causes compilation errors. Repo has a patch to modify related lines in Boost library code and it should be applied before compiling the `GDBlas` library.
+
+Start by applying the patch.
 ```sh
-scons platform=<platform> target_path=<target_path> target_name=libgdblas
+cd boost
+patch -s -p0 < ../boost_noexception.patch
+```
+Then,
+```sh
+TARGET=template_debug # or template_release
+PLATFORM=linux # or windows, macos
+ARCH=x86_64 # for other options check Godot docs
+cd godot-cpp
+scons target="$TARGET" platform="$PLATFORM" arch="$ARCH"
+cd ..
+scons target="$TARGET" platform="$PLATFORM" arch="$ARCH"
+```
+Build by disabling Boost C++ based functionality to reduce binary size
+```sh
+scons target="$TARGET" platform="$PLATFORM" arch="$ARCH" DISABLE_GDBLAS_ODE=1 DISABLE_GDBLAS_GEOMETRY=1
 ```
 You can visit Godot's [build system](https://docs.godotengine.org/en/stable/contributing/development/compiling/introduction_to_the_buildsystem.html) documentation for more information.

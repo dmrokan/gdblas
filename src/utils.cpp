@@ -32,7 +32,7 @@ void gdblas_error(const char *fmt, ...) {
 
 	UtilityFunctions::printerr(bytes.get_string_from_ascii());
 
-#ifdef GDBLAS_DEBUG_PRINT
+#if defined(GDBLAS_DEBUG_PRINT)
 	fprintf(stderr, "ERR: ");
 	va_start(args, fmt);
 	vfprintf(stderr, fmt, args);
@@ -41,7 +41,7 @@ void gdblas_error(const char *fmt, ...) {
 }
 
 void gdblas_warn(const char *fmt, ...) {
-#ifdef GDBLAS_DEBUG_PRINT
+#if defined(GDBLAS_DEBUG_PRINT)
 	fprintf(stderr, "WRN: ");
 	va_list args;
 	va_start(args, fmt);
@@ -51,7 +51,7 @@ void gdblas_warn(const char *fmt, ...) {
 }
 
 void gdblas_debug(const char *fmt, ...) {
-#ifdef GDBLAS_DEBUG_PRINT
+#if defined(GDBLAS_DEBUG_PRINT)
 	fprintf(stdout, "DBG: ");
 	va_list args;
 	va_start(args, fmt);
