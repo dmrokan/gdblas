@@ -2,7 +2,6 @@ name: Builds
 
 on:
   push:
-    branches: [ main, workflow-test ]
     tags:
       - "v*"
 
@@ -62,12 +61,12 @@ jobs:
 
     steps:
       - name: Checkout project
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.x'
 
@@ -96,10 +95,8 @@ jobs:
       - name: Bootstrap patches
         shell: sh
         run: |
-          patch -s -p0 < read.patch
-          patch -s -p0 < polygon_45_set_data.patch
-          patch -s -p0 < rational.patch
-          patch -s -p0 < boolean_op_45.patch
+          patch -s -p0 < ../boost_noexception.patch
+        working-directory: boost
       - name: Compile godot-cpp
         shell: sh
         run: |

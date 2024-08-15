@@ -1120,13 +1120,13 @@ public:
 
 	Context *m_ctx;
 
-#ifdef GDBLAS_WITH_ODE
+#if defined(GDBLAS_WITH_ODE)
 	double m_prev_end_time;
 #endif
 
 	GDBlasMat() :
 			m_ctx(nullptr) {
-#ifdef GDBLAS_WITH_ODE
+#if defined(GDBLAS_WITH_ODE)
 		m_prev_end_time = 0.0;
 #endif
 
@@ -1368,7 +1368,7 @@ public:
 			int p_step = 1, int p_offset = 0);
 	Variant downsample(int p_factor_m, int p_factor_n, Variant p_filter);
 
-#ifdef GDBLAS_WITH_ODE
+#if defined(GDBLAS_WITH_ODE)
 	Variant eval_ode(Callable p_f, double p_dt, double p_max_step = 1e-2);
 #endif
 };

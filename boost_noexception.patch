@@ -1,0 +1,115 @@
+diff --git libs/geometry/include/boost/geometry/io/wkt/read.hpp libs/geometry/include/boost/geometry/io/wkt/read.hpp
+index 5bbfd235c..de4075959 100644
+--- libs/geometry/include/boost/geometry/io/wkt/read.hpp
++++ libs/geometry/include/boost/geometry/io/wkt/read.hpp
+@@ -137,7 +137,11 @@ struct parsing_assigner
+         // Stop at end of tokens, or at "," ot ")"
+         bool finished = (it == end || *it == "," || *it == ")");
+ 
++#ifdef BOOST_NO_EXCEPTIONS
++        if constexpr (true)
++#else
+         try
++#endif
+         {
+             // Initialize missing coordinates to default constructor (zero)
+             // OR
+@@ -149,6 +153,7 @@ struct parsing_assigner
+                     ? coordinate_type()
+                     : coordinate_cast<coordinate_type>::apply(*it));
+         }
++#ifndef BOOST_NO_EXCEPTIONS
+         catch(boost::bad_lexical_cast const& blc)
+         {
+             BOOST_THROW_EXCEPTION(read_wkt_exception(blc.what(), it, end, wkt));
+@@ -161,6 +166,7 @@ struct parsing_assigner
+         {
+             BOOST_THROW_EXCEPTION(read_wkt_exception("", it, end, wkt));
+         }
++#endif
+ 
+         parsing_assigner<Point, Dimension + 1, DimensionCount>::apply(
+                         (finished ? it : ++it), end, point, wkt);
+diff --git libs/polygon/include/boost/polygon/detail/boolean_op_45.hpp libs/polygon/include/boost/polygon/detail/boolean_op_45.hpp
+index 0d65501..d09f55e 100644
+--- libs/polygon/include/boost/polygon/detail/boolean_op_45.hpp
++++ libs/polygon/include/boost/polygon/detail/boolean_op_45.hpp
+@@ -816,7 +816,7 @@ namespace boost { namespace polygon{
+             //the cross point is not on the integer grid and cannot be represented
+             //we must throw an exception
+             std::string msg = "GTL 45 Boolean error, precision insufficient to represent edge intersection coordinate value.";
+-            throw(msg);
++            BOOST_THROW_EXCEPTION(std::runtime_error(msg));
+           } else {
+             //note that result of this subtraction is always positive because itr1 is above itr2 in scanline
+             LongUnit halfDelta2 = (LongUnit)((((LongUnit)y1) - y2)/2);
+diff --git libs/polygon/include/boost/polygon/polygon_45_set_data.hpp libs/polygon/include/boost/polygon/polygon_45_set_data.hpp
+index 97585f6..f6d86bc 100644
+--- libs/polygon/include/boost/polygon/polygon_45_set_data.hpp
++++ libs/polygon/include/boost/polygon/polygon_45_set_data.hpp
+@@ -1578,6 +1578,9 @@ namespace boost { namespace polygon{
+     } else {
+       sort();
+       rvalue.sort();
++#ifdef BOOST_NO_EXCEPTIONS
++      { result.is_manhattan_ = applyBoolean45OpOnVectors<Unit, op>(result.data_, data_, rvalue.data_); }
++#else
+       try {
+         result.is_manhattan_ = applyBoolean45OpOnVectors<Unit, op>(result.data_, data_, rvalue.data_);
+       } catch (std::string str) {
+@@ -1659,9 +1662,10 @@ namespace boost { namespace polygon{
+           result.is_manhattan_ = result_is_manhattan;
+           result.dirty_ = false;
+           result.unsorted_ = false;
+-        } else { throw str; }
++        } else { BOOST_THROW_EXCEPTION(std::runtime_error(str); }
+       }
+       //std::cout << "DONE SCANNING\n";
++#endif
+     }
+   }
+ 
+@@ -1699,6 +1703,9 @@ namespace boost { namespace polygon{
+       result.unsorted_ = false;
+     } else {
+       sort();
++#ifdef BOOST_NO_EXCEPTIONS
++      { result.is_manhattan_ = applyUnary45OpOnVectors<Unit, op>(result.data_, data_); }
++#else
+       try {
+         result.is_manhattan_ = applyUnary45OpOnVectors<Unit, op>(result.data_, data_);
+       } catch (std::string str) {
+@@ -1770,9 +1777,10 @@ namespace boost { namespace polygon{
+           result.is_manhattan_ = result_is_manhattan;
+           result.dirty_ = false;
+           result.unsorted_ = false;
+-        } else { throw str; }
++        } else { BOOST_THROW_EXCEPTION(std::runtime_error(str); }
+       }
+       //std::cout << "DONE SCANNING\n";
++#endif
+     }
+     data_.swap(result.data_);
+     error_data_.swap(result.error_data_);
+diff --git libs/rational/include/boost/rational.hpp libs/rational/include/boost/rational.hpp
+index 4b66aae..0e6bbe2 100644
+--- libs/rational/include/boost/rational.hpp
++++ libs/rational/include/boost/rational.hpp
+@@ -946,6 +946,9 @@ std::istream& operator>> (std::istream& is, rational<IntType>& r)
+             if ( c == '/' )
+             {
+                 if ( is >> std::noskipws >> d )
++#ifdef BOOST_NO_EXCEPTIONS
++                    r.assign( n, d );
++#else
+                     try {
+                         r.assign( n, d );
+                     } catch ( bad_rational & ) {        // normalization fail
+@@ -955,6 +958,7 @@ std::istream& operator>> (std::istream& is, rational<IntType>& r)
+                             throw;   // ...but the original exception instead
+                         // ELSE: suppress the exception, use just error flags
+                     }
++#endif
+             }
+             else
+                 is.setstate( ios::failbit );

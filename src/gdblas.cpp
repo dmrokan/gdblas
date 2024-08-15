@@ -16,7 +16,7 @@ void GDBlas::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("mat_to_image_data", "p_mat_array", "p_channel_width"),
 						 &GDBlas::mat_to_image_data, DEFVAL(1));
 
-#ifdef GDBLAS_WITH_GEOMETRY
+#if defined(GDBLAS_WITH_GEOMETRY)
 
 	ClassDB::bind_method(D_METHOD("area", "p_polygon"), &GDBlas::geom_area);
 	ClassDB::bind_method(D_METHOD("buffer", "p_geom", "p_buffer_distance", "p_points_per_join",
@@ -71,6 +71,10 @@ void GDBlas::_bind_methods() {
 	GDBLAS_BIND_CONSTANT(GDBlasMat::REAL_COMPONENT, REAL_COMPONENT);
 	GDBLAS_BIND_CONSTANT(GDBlasMat::IMAG_COMPONENT, IMAG_COMPONENT);
 	GDBLAS_BIND_CONSTANT(GDBlasMat::BOTH_COMPONENTS, BOTH_COMPONENTS);
+
+#if defined(GDBLAS_WITH_ODE) || defined(GDBLAS_WITH_GEOMETRY)
+	ADD_SIGNAL(MethodInfo("gdblas_boost_exception", PropertyInfo(Variant::STRING, "error_info")));
+#endif
 }
 
 GDBlas::GDBlas() {
@@ -225,7 +229,7 @@ Variant GDBlas::mat_to_image_data(Array p_mat_array, int p_channel_width) {
 	return output;
 }
 
-#ifdef GDBLAS_WITH_GEOMETRY
+#if defined(GDBLAS_WITH_GEOMETRY)
 
 static bool swap_geom(Variant **geom1, Variant **geom2) {
 	Variant *tmp = *geom1;

@@ -25,7 +25,7 @@ public:
 	Variant linspace(GDBlasMat::scalar_t p_start, GDBlasMat::scalar_t p_end, int p_count);
 	Variant mat_to_image_data(Array p_mat_array, int p_channel_width = 1);
 
-#ifdef GDBLAS_WITH_GEOMETRY
+#if defined(GDBLAS_WITH_GEOMETRY)
 
 	Variant geom_area(Variant p_geom);
 	Variant geom_buffer(Variant p_geom, double p_buffer_distance = 2.0, int p_points_per_join = 4,
